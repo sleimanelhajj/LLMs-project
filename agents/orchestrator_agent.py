@@ -17,28 +17,17 @@ from agents.pdf_agent import PDFAnalysisAgent
 from agents.invoice_generator_agent import InvoiceGeneratorAgent
 from models.schemas import QueryRequest, AgentResponse
 from utils.vector_db_manager import initialize_policy_vector_db
-from config import (
-    DEFAULT_LLM_MODEL,
-    LLM_TEMPERATURE,
-    LLM_MAX_RETRIES,
-    CATALOG_DB_PATH,
-    GOOGLE_API_KEY,
-)
+from config import DEFAULT_LLM_MODEL, LLM_TEMPERATURE, LLM_MAX_RETRIES
 import traceback
 
 
 class OrchestratorAgent(BaseAgent):
-    def __init__(
-        self,
-        google_api_key: str,
-        catalog_db_path: str,
-    ):
+    def __init__(self, google_api_key: str, catalog_db_path: str):
         super().__init__(
             name="OrchestratorAgent",
-            description="Routes queries to appropriate specialized agents"
+            description="Routes queries to appropriate specialized agents",
         )
-        
-        # Initialize LLM for routing decisions
+
         self.llm = ChatGoogleGenerativeAI(
             model=DEFAULT_LLM_MODEL,
             temperature=LLM_TEMPERATURE,
@@ -46,77 +35,42 @@ class OrchestratorAgent(BaseAgent):
             max_retries=LLM_MAX_RETRIES,
         )
 
-        # initialize policy vector database
         print("Initializing policy vector database...")
         policy_vector_db = initialize_policy_vector_db()
 
-        # Initialize all specialized agents
         self.agents: List[BaseAgent] = [
             CatalogAgent(db_path=catalog_db_path, google_api_key=google_api_key),
             DeliveryAgent(config_path="data/delivery_rules.yaml"),
             CompanyInfoAgent(data_path="data/company_info.yaml"),
-            PolicyAgent(
-                vector_db_manager=policy_vector_db, google_api_key=google_api_key
-            ),
+            PolicyAgent(vector_db_manager=policy_vector_db, google_api_key=google_api_key),
             PDFAnalysisAgent(google_api_key=google_api_key),
-            InvoiceGeneratorAgent(
-                google_api_key=google_api_key, db_path=catalog_db_path
-            ),
+            InvoiceGeneratorAgent(google_api_key=google_api_key, db_path=catalog_db_path),
         ]
 
-        # Create agent descriptions for LLM
         self.agent_descriptions = self._build_agent_descriptions()
-    
+
     def can_handle(self, query: str) -> bool:
-        """Orchestrator handles all queries by routing to appropriate agents."""
-        return True  # Orchestrator can handle everything
+        return True
 
     def _build_agent_descriptions(self) -> str:
-        """Build descriptions of available agents for LLM routing."""
         descriptions = []
         for agent in self.agents:
             descriptions.append(f"- {agent.name}: {agent.description}")
         return "\n".join(descriptions)
 
     def _is_general_conversation(self, query: str) -> bool:
-        """Check if query is general conversation (greetings, chitchat)."""
         general_keywords = [
-            "hello",
-            "hi",
-            "hey",
-            "good morning",
-            "good afternoon",
-            "good evening",
-            "how are you",
-            "what's up",
-            "thanks",
-            "thank you",
-            "bye",
-            "goodbye",
-            "nice",
-            "great",
-            "awesome",
-            "cool",
-            "recommend",
-            "suggest",
-            "advice",
-            "what do you think",
-            "opinion",
-            "best",
-            "better",
+            "hello", "hi", "hey", "good morning", "good afternoon", "good evening",
+            "how are you", "what's up", "thanks", "thank you", "bye", "goodbye",
+            "nice", "great", "awesome", "cool", "recommend", "suggest", "advice",
+            "what do you think", "opinion", "best", "better",
         ]
         query_lower = query.lower()
         return any(keyword in query_lower for keyword in general_keywords)
 
     async def route_query(self, query: str) -> Optional[BaseAgent]:
-        """
-        Use LLM to determine which agent should handle the query.
-        Returns None for general conversation (handled by orchestrator).
-        """
-
-        # Check if it's general conversation first
         if self._is_general_conversation(query):
-            return None  # Will be handled by orchestrator itself
+            return None
 
         system_prompt = f"""You are a query router for a warehouse management chatbot system.
 
@@ -150,26 +104,21 @@ Respond with ONLY the agent name or "GENERAL", nothing else."""
             response = await self.llm.ainvoke(messages)
             agent_name = response.content.strip()
 
-            # Check for general conversation
             if "general" in agent_name.lower():
                 return None
 
-            # Find matching agent
             for agent in self.agents:
                 if agent.name.lower() in agent_name.lower():
                     print(f"[Orchestrator] Routing to: {agent.name}")
                     return agent
 
-            # If still no match, return None for general handling
             return None
 
         except Exception as e:
             print(f"[Orchestrator] Routing error: {e}")
-            return None  # Handle as general conversation on error
+            return None
 
     async def _handle_general_conversation(self, query: str) -> str:
-        """Handle general conversation using LLM."""
-
         system_prompt = """You are a friendly warehouse assistant chatbot. 
 
 Your personality:
@@ -195,33 +144,22 @@ Guidelines:
 - Keep responses concise (2-3 sentences max)"""
 
         messages = [SystemMessage(content=system_prompt), HumanMessage(content=query)]
-
         response = await self.llm.ainvoke(messages)
         return response.content.strip()
 
     async def process_query(self, request: QueryRequest) -> AgentResponse:
-        """
-        Process query by routing to appropriate agent.
-        """
         try:
-            # Check if we're in the middle of an invoice conversation
             metadata = request.metadata or {}
             invoice_state = metadata.get("invoice_state", {})
 
-            # If there's an active invoice state and it's not "start", route to InvoiceGeneratorAgent
             if invoice_state and invoice_state.get("step") != "start":
-                print(
-                    f"[Orchestrator] Continuing invoice conversation (step: {invoice_state.get('step')})"
-                )
-                # Find InvoiceGeneratorAgent
+                print(f"[Orchestrator] Continuing invoice conversation (step: {invoice_state.get('step')})")
                 for agent in self.agents:
                     if agent.name == "InvoiceGeneratorAgent":
                         return await agent.process_query(request)
 
-            # Route to appropriate agent
             agent = await self.route_query(request.query)
 
-            # Handle general conversation by orchestrator
             if not agent:
                 print("[Orchestrator] Handling as general conversation")
                 response_text = await self._handle_general_conversation(request.query)
@@ -231,16 +169,12 @@ Guidelines:
                     success=True,
                 )
 
-            # Let the agent handle the query
             response = await agent.process_query(request)
-
             return response
 
         except Exception as e:
             print(f"[Orchestrator] Error: {e}")
-
             traceback.print_exc()
-
             return AgentResponse(
                 agent_name=self.name,
                 response="I encountered an error processing your request. Please try again.",

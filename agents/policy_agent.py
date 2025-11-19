@@ -14,6 +14,7 @@ class PolicyAgent(BaseAgent):
     def __init__(
         self,
         vector_db_manager: VectorDBManager,
+        google_api_key: str = GOOGLE_API_KEY,
     ):
         super().__init__(
             name="PolicyAgent",
@@ -22,13 +23,13 @@ class PolicyAgent(BaseAgent):
 
         self.vector_db = vector_db_manager
 
-        if not GOOGLE_API_KEY:
+        if not google_api_key:
             raise ValueError("Google API key required for PolicyAgent")
 
         self.llm = ChatGoogleGenerativeAI(
             model=DEFAULT_LLM_MODEL,
             temperature=LLM_TEMPERATURE,
-            google_api_key=GOOGLE_API_KEY,
+            google_api_key=google_api_key,
         )
 
         # System prompt for policy Q&A
@@ -118,7 +119,7 @@ Be professional and customer-service oriented."""
                     "retrieved_chunks": len(retrieved_chunks),
                     "relevance_scores": [
                         float(chunk["score"]) for chunk in retrieved_chunks
-                    ],
+                    ],  
                     "sources": [chunk["metadata"] for chunk in retrieved_chunks],
                 },
             )
@@ -172,3 +173,5 @@ Please provide a clear, helpful answer. If the question is a follow-up or clarif
 
         response = await self.llm.ainvoke(messages)
         return response.content
+
+
