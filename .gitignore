@@ -1,0 +1,129 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment Variables & Secrets
+.env
+.env.local
+.env.*.local
+*.env
+config.local.py
+secrets.yaml
+secrets.json
+
+# IDE & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# Database Files
+*.db
+*.sqlite
+*.sqlite3
+data/products_catalog.db
+data/*.db
+
+# Generated PDFs & Invoices
+data/invoices/*.pdf
+data/uploads/*.pdf
+*.pdf
+
+# Vector Database & Embeddings
+data/vector_db/
+data/faiss_index/
+*.faiss
+*.pkl
+*.pickle
+
+# Logs
+*.log
+logs/
+*.out
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+pytest_debug.log
+
+# OS Files
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Temporary Files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+~*
+
+# Documentation
+docs/_build/
+site/
+
+# Large Language Model Caches
+.cache/
+.langchain/
+.chroma/
+
+# Monitoring & Observability
+.langsmith/
+langsmith_traces/
+
+# Keep directory structure but ignore contents
+data/invoices/*
+!data/invoices/.gitkeep
+data/uploads/*
+!data/uploads/.gitkeep
+data/vector_db/*
+!data/vector_db/.gitkeep
+
+# Keep important config files
+!data/delivery_rules.yaml
+!data/company_info.yaml
+!data/policies/*.md
+!data/documents/*.md

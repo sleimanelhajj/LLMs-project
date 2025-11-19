@@ -1,0 +1,96 @@
+# Delivery Options Configuration
+delivery_options:
+  - name: "Standard Shipping"
+    code: "STANDARD"
+    cost: 9.99
+    estimated_days: 5
+    description: "Standard ground shipping with tracking"
+    coverage:
+      - "US"
+      - "CA"
+      - "EU"
+    features:
+      - "Tracking included"
+      - "Insurance up to $100"
+      - "Signature on request"
+  
+  - name: "Express Shipping"
+    code: "EXPRESS"
+    cost: 24.99
+    estimated_days: 2
+    description: "2-day express delivery with signature confirmation"
+    coverage:
+      - "US"
+      - "CA"
+    features:
+      - "Priority handling"
+      - "Tracking included"
+      - "Signature required"
+      - "Insurance up to $500"
+  
+  - name: "Overnight"
+    code: "OVERNIGHT"
+    cost: 39.99
+    estimated_days: 1
+    description: "Next business day delivery by 10:30 AM"
+    coverage:
+      - "US"
+    features:
+      - "Guaranteed delivery"
+      - "Real-time tracking"
+      - "Signature required"
+      - "Insurance up to $1000"
+    restrictions:
+      - "Orders must be placed before 12 PM"
+      - "Not available on weekends"
+  
+  - name: "Local Pickup"
+    code: "PICKUP"
+    cost: 0.00
+    estimated_days: 0
+    description: "Pick up at our warehouse location during business hours"
+    coverage:
+      - "Local"
+    features:
+      - "No shipping cost"
+      - "Same-day availability"
+      - "ID verification required"
+  
+  - name: "International Express"
+    code: "INTL_EXPRESS"
+    cost: 89.99
+    estimated_days: 7
+    description: "International express shipping with customs handling"
+    coverage:
+      - "International"
+    features:
+      - "Customs documentation included"
+      - "Tracking included"
+      - "Insurance up to $500"
+    restrictions:
+      - "Additional customs fees may apply"
+      - "Restricted items may not be shipped"
+
+# Shipping Policies
+shipping_policies:
+  free_shipping_threshold: 500.00
+  max_package_weight: 150  # lbs
+  processing_time: "Orders placed before 2 PM EST ship same day"
+  tracking: "Tracking number provided within 24 hours"
+  
+  # Regional restrictions
+  restrictions:
+    - region: "Alaska, Hawaii"
+      additional_cost: 15.00
+      additional_days: 3
+    - region: "PO Box"
+      allowed_methods: ["STANDARD", "EXPRESS"]
+  
+  # Volume discounts
+  volume_discounts:
+    - min_orders_per_month: 10
+      discount_percent: 10
+    - min_orders_per_month: 25
+      discount_percent: 15
+    - min_orders_per_month: 50
+      discount_percent: 20
