@@ -148,36 +148,72 @@ Guidelines:
         return response.content.strip()
 
     async def process_query(self, request: QueryRequest) -> AgentResponse:
+        """Process query by routing to appropriate agent with detailed thinking logs."""
         try:
+            thinking_log = []  # Collect routing decisions for transparency
+            
             metadata = request.metadata or {}
             invoice_state = metadata.get("invoice_state", {})
 
+            # Check for active invoice conversation
             if invoice_state and invoice_state.get("step") != "start":
-                print(f"[Orchestrator] Continuing invoice conversation (step: {invoice_state.get('step')})")
+                step = invoice_state.get('step')
+                thinking_log.append(f"🔄 Detected active invoice conversation at step: {step}")
+                thinking_log.append(f"✓ Routing to: InvoiceGeneratorAgent (invoice flow)")
+                print(f"[Orchestrator] Continuing invoice conversation (step: {step})")
+                
                 for agent in self.agents:
                     if agent.name == "InvoiceGeneratorAgent":
-                        return await agent.process_query(request)
+                        response = await agent.process_query(request)
+                        # Add thinking log to response metadata
+                        if response.data:
+                            response.data["thinking"] = thinking_log
+                        else:
+                            response.data = {"thinking": thinking_log}
+                        return response
 
+            # Route query to appropriate agent
+            thinking_log.append(f"📝 Analyzing query: '{request.query}'")
             agent = await self.route_query(request.query)
 
+            # Handle general conversation
             if not agent:
+                thinking_log.append("💭 Detected: General conversation / greeting")
+                thinking_log.append("✓ Routing to: WarehouseAssistant (general handler)")
                 print("[Orchestrator] Handling as general conversation")
+                
                 response_text = await self._handle_general_conversation(request.query)
                 return AgentResponse(
                     agent_name="WarehouseAssistant",
                     response=response_text,
                     success=True,
+                    data={"thinking": thinking_log}
                 )
 
+            # Route to specialized agent
+            thinking_log.append(f"🎯 Selected agent: {agent.name}")
+            thinking_log.append(f"📋 Agent capability: {agent.description}")
+            thinking_log.append(f"✓ Routing to: {agent.name}")
+            
             response = await agent.process_query(request)
+            
+            # Add thinking log to response metadata
+            if response.data:
+                response.data["thinking"] = thinking_log
+            else:
+                response.data = {"thinking": thinking_log}
+            
             return response
 
         except Exception as e:
+            thinking_log.append(f"❌ Error during routing: {str(e)}")
             print(f"[Orchestrator] Error: {e}")
             traceback.print_exc()
+            
             return AgentResponse(
                 agent_name=self.name,
                 response="I encountered an error processing your request. Please try again.",
                 success=False,
                 error=str(e),
+                data={"thinking": thinking_log}
             )
