@@ -1,10 +1,3 @@
-"""
-Company Info Agent
-
-Provides company information from YAML configuration files.
-Handles queries about contact details, locations, hours, and company background.
-"""
-
 import yaml
 import os
 from typing import Dict, Any, List
