@@ -40,17 +40,6 @@ class ProductModel(BaseModel):
         from_attributes = True
 
 
-class DeliveryOption(BaseModel):
-    """Delivery option model."""
-    name: str
-    code: str
-    cost: float
-    estimated_days: int
-    description: str
-    coverage: List[str]
-    features: Optional[List[str]] = None
-    restrictions: Optional[List[str]] = None
-
 
 class CompanyLocation(BaseModel):
     """Company location model."""
@@ -63,16 +52,6 @@ class CompanyLocation(BaseModel):
     type: Optional[str] = None  # e.g., "headquarters", "warehouse"
 
 
-class CompanyInfo(BaseModel):
-    """Company information model."""
-    name: str
-    phone: str
-    email: str
-    website: Optional[str] = None
-    founded: Optional[str] = None
-    description: Optional[str] = None
-    locations: Optional[List[CompanyLocation]] = None
-
 
 class InvoiceItem(BaseModel):
     """Invoice line item model."""
@@ -81,17 +60,3 @@ class InvoiceItem(BaseModel):
     quantity: int
     unit_price: float
     total: float
-
-
-class Invoice(BaseModel):
-    """Invoice model."""
-    invoice_number: str
-    customer_name: str
-    customer_address: str
-    invoice_date: str
-    due_date: str
-    items: List[InvoiceItem]
-    subtotal: float
-    tax: float
-    total: float
-    notes: Optional[str] = None
