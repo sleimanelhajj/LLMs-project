@@ -1,10 +1,3 @@
-"""
-Policy Agent
-
-Answers policy questions using RAG (Retrieval Augmented Generation).
-Uses vector database to retrieve relevant policy sections and LLM to generate answers.
-"""
-
 import os
 from typing import List, Dict, Any
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -18,8 +11,6 @@ from config import DEFAULT_LLM_MODEL, LLM_TEMPERATURE, GOOGLE_API_KEY
 
 
 class PolicyAgent(BaseAgent):
-    """Agent for handling policy queries using RAG."""
-    
     def __init__(
         self,
         vector_db_manager: VectorDBManager,
