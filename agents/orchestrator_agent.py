@@ -54,7 +54,7 @@ class OrchestratorAgent(BaseAgent):
         self.agents: List[BaseAgent] = [
             CatalogAgent(db_path=catalog_db_path, google_api_key=google_api_key),
             DeliveryAgent(config_path="data/delivery_rules.yaml"),
-            CompanyInfoAgent(config_path="data/company_info.yaml"),
+            CompanyInfoAgent(data_path="data/company_info.yaml"),
             PolicyAgent(
                 vector_db_manager=policy_vector_db, google_api_key=google_api_key
             ),

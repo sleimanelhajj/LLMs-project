@@ -21,9 +21,6 @@ class CompanyInfoAgent(BaseAgent):
         self.data_path = data_path
         self.company_data = self._load_company_info()
 
-
-
-
     def _load_company_info(self) -> Dict[str, Any]:
         if not os.path.exists(self.data_path):
             raise FileNotFoundError(f"Company info file not found: {self.data_path}")
@@ -60,7 +57,6 @@ class CompanyInfoAgent(BaseAgent):
     async def process_query(self, request: QueryRequest) -> AgentResponse:
         try:
             query_lower = request.query.lower()
-            # Determine what type of info the user wants
             response = self._route_to_formatter(query_lower)
 
             return AgentResponse(
@@ -112,16 +108,16 @@ class CompanyInfoAgent(BaseAgent):
         contact = self.company_data.get("contact", {})
         company_name = self.company_data.get("name", "Our Company")
 
-        lines = [f"**{company_name} - Contact Information**\n"]
+        lines = [f"{company_name} - Contact Information\n"]
 
         if contact.get("main_phone"):
-            lines.append(f"**Main Phone:** {contact['main_phone']}")
+            lines.append(f"Main Phone: {contact['main_phone']}")
         if contact.get("toll_free"):
-            lines.append(f"**Toll Free:** {contact['toll_free']}")
+            lines.append(f"Toll Free: {contact['toll_free']}")
         if contact.get("fax"):
-            lines.append(f"**Fax:** {contact['fax']}")
+            lines.append(f"Fax: {contact['fax']}")
 
-        lines.append("\n**For specific inquiries:**")
+        lines.append("\nFor specific inquiries:")
         if contact.get("support_email"):
             lines.append(f"• Support: {contact['support_email']}")
         if contact.get("sales_email"):
@@ -133,14 +129,14 @@ class CompanyInfoAgent(BaseAgent):
         contact = self.company_data.get("contact", {})
         company_name = self.company_data.get("name", "Our Company")
 
-        lines = [f"**{company_name} - Email Contacts**\n"]
+        lines = [f"{company_name} - Email Contacts\n"]
 
         if contact.get("email"):
-            lines.append(f"**General Inquiries:** {contact['email']}")
+            lines.append(f"General Inquiries: {contact['email']}")
         if contact.get("support_email"):
-            lines.append(f"**Technical Support:** {contact['support_email']}")
+            lines.append(f"Technical Support: {contact['support_email']}")
         if contact.get("sales_email"):
-            lines.append(f"**Sales & Orders:** {contact['sales_email']}")
+            lines.append(f"Sales & Orders: {contact['sales_email']}")
 
         return "\n".join(lines)
 
@@ -150,7 +146,6 @@ class CompanyInfoAgent(BaseAgent):
         if not locations:
             return "Location information is not available."
 
-        # Check if user asking about specific location
         specific = self._find_specific_location(query, locations)
 
         if specific:
@@ -162,7 +157,6 @@ class CompanyInfoAgent(BaseAgent):
         self, query: str, locations: List[Dict]
     ) -> Dict[str, Any]:
         for location in locations:
-            # Check if location name, type, or city mentioned
             name = location.get("name", "").lower()
             loc_type = location.get("type", "").lower()
             city = location.get("city", "").lower()
@@ -177,9 +171,9 @@ class CompanyInfoAgent(BaseAgent):
         return None
 
     def _format_single_location(self, location: Dict[str, Any]) -> str:
-        lines = [f"**{location.get('name')}**\n"]
+        lines = [f"{location.get('name')}\n"]
 
-        lines.append("**Address:**")
+        lines.append("Address:")
         lines.append(location.get("address", ""))
         lines.append(
             f"{location.get('city')}, {location.get('state')} {location.get('zip')}"
@@ -187,12 +181,12 @@ class CompanyInfoAgent(BaseAgent):
         lines.append(f"{location.get('country')}\n")
 
         if location.get("phone"):
-            lines.append(f"**Phone:** {location['phone']}")
+            lines.append(f"Phone: {location['phone']}")
         if location.get("email"):
-            lines.append(f"**Email:** {location['email']}")
+            lines.append(f"Email: {location['email']}")
 
         if location.get("hours"):
-            lines.append("\n**Hours:**")
+            lines.append("\nHours:")
             hours = location["hours"]
             if hours.get("weekday"):
                 lines.append(f"• Weekdays: {hours['weekday']}")
@@ -200,7 +194,7 @@ class CompanyInfoAgent(BaseAgent):
                 lines.append(f"• Weekend: {hours['weekend']}")
 
         if location.get("services"):
-            lines.append("\n**Services:**")
+            lines.append("\nServices:")
             for service in location["services"]:
                 lines.append(f"• {service}")
 
@@ -208,7 +202,7 @@ class CompanyInfoAgent(BaseAgent):
 
     def _format_all_locations(self, locations: List[Dict[str, Any]]) -> str:
         company_name = self.company_data.get("name", "Our Company")
-        lines = [f"**{company_name} - Our Locations**\n"]
+        lines = [f"{company_name} - Our Locations\n"]
 
         for i, location in enumerate(locations, 1):
             loc_name = location.get("name", "Unknown")
@@ -217,7 +211,7 @@ class CompanyInfoAgent(BaseAgent):
             state = location.get("state", "")
             phone = location.get("phone", "")
 
-            lines.append(f"**{i}. {loc_name}** ({loc_type})")
+            lines.append(f"{i}. {loc_name} ({loc_type})")
             lines.append(f"   Location: {city}, {state}")
             lines.append(f"   Phone: {phone}")
 
@@ -228,7 +222,7 @@ class CompanyInfoAgent(BaseAgent):
                     service_preview += f" (+{len(services) - 2} more)"
                 lines.append(f"   Services: {service_preview}")
 
-            lines.append("")  
+            lines.append("")
 
         lines.append("Ask about a specific location for detailed information!")
         return "\n".join(lines)
@@ -240,7 +234,7 @@ class CompanyInfoAgent(BaseAgent):
             return "Business hours information is not available."
 
         company_name = self.company_data.get("name", "Our Company")
-        lines = [f"**{company_name} - Business Hours**\n", "**Regular Hours:**"]
+        lines = [f"{company_name} - Business Hours\n", "Regular Hours:"]
 
         weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday"]
         weekday_hours = [hours.get(day) for day in weekdays if hours.get(day)]
@@ -258,7 +252,7 @@ class CompanyInfoAgent(BaseAgent):
                 lines.append(f"• {day.title()}: {hours[day]}")
 
         if hours.get("holidays"):
-            lines.append(f"\n**Holidays:** {hours['holidays']}")
+            lines.append(f"\nHolidays: {hours['holidays']}")
 
         return "\n".join(lines)
 
@@ -266,26 +260,26 @@ class CompanyInfoAgent(BaseAgent):
         about = self.company_data.get("about", {})
         company_name = self.company_data.get("name", "Our Company")
 
-        lines = [f"**About {company_name}**\n"]
+        lines = [f"About {company_name}\n"]
 
         if about.get("description"):
             lines.append(about["description"].strip() + "\n")
 
         if about.get("mission"):
-            lines.append("**Our Mission:**")
+            lines.append("Our Mission:")
             lines.append(about["mission"].strip() + "\n")
 
         if self.company_data.get("founded"):
-            lines.append(f"**Founded:** {self.company_data['founded']}")
+            lines.append(f"Founded: {self.company_data['founded']}")
 
         if about.get("employee_count"):
-            lines.append(f"**Team Size:** {about['employee_count']}+ employees")
+            lines.append(f"Team Size: {about['employee_count']}+ employees")
 
         if about.get("service_area"):
-            lines.append(f"**Service Area:** {about['service_area']}")
+            lines.append(f"Service Area: {about['service_area']}")
 
         if about.get("certifications"):
-            lines.append("\n**Certifications:**")
+            lines.append("\nCertifications:")
             for cert in about["certifications"]:
                 lines.append(f"• {cert}")
 
@@ -298,27 +292,26 @@ class CompanyInfoAgent(BaseAgent):
             return "Web information is not available."
 
         company_name = self.company_data.get("name", "Our Company")
-        lines = [f"**{company_name} - Online Presence**\n"]
+        lines = [f"{company_name} - Online Presence\n"]
 
         if web.get("website"):
-            lines.append(f"**Website:** {web['website']}")
+            lines.append(f"Website: {web['website']}")
         if web.get("linkedin"):
-            lines.append(f"**LinkedIn:** {web['linkedin']}")
+            lines.append(f"LinkedIn: {web['linkedin']}")
         if web.get("twitter"):
-            lines.append(f"**Twitter:** {web['twitter']}")
+            lines.append(f"Twitter: {web['twitter']}")
 
         return "\n".join(lines)
 
     def _format_general_info(self) -> str:
-        """Format general company information overview."""
         company_name = self.company_data.get("name", "Our Company")
-        lines = [f"**{company_name}**\n"]
+        lines = [f"{company_name}\n"]
 
         about = self.company_data.get("about", {})
         if about.get("description"):
             lines.append(about["description"].strip() + "\n")
 
-        lines.append("**Quick Info:**")
+        lines.append("Quick Info:")
 
         contact = self.company_data.get("contact", {})
         if contact.get("main_phone"):
