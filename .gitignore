@@ -127,3 +127,9 @@ data/vector_db/*
 !data/company_info.yaml
 !data/policies/*.md
 !data/documents/*.md
+
+# Empty/unused directories
+tools/
+mcp/
+api/
+templates/

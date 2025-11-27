@@ -56,5 +56,5 @@ POLICY_VECTOR_DB_PATH = os.path.join(DATA_DIR, "vector_dbs", "policy_vectordb")
 os.makedirs(DATABASE_DIR, exist_ok=True)
 os.makedirs(INVOICES_DIR, exist_ok=True)
 os.makedirs(UPLOADS_DIR, exist_ok=True)
-os.makedirs(TEMPLATES_DIR, exist_ok=True)
+# templates/ removed - not currently used
 os.makedirs(os.path.join(DATA_DIR, "vector_dbs"), exist_ok=True)
