@@ -550,6 +550,175 @@
             border-color: var(--accent-hover);
         }
 
+        /* Debug/Details Dropdown Panel */
+        .message-debug {
+            margin-top: 10px;
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            overflow: hidden;
+            font-size: 12px;
+            background: var(--bg-secondary);
+            box-shadow: 0 2px 4px rgba(79, 70, 229, 0.1);
+        }
+
+        .debug-toggle {
+            width: 100%;
+            padding: 8px 12px;
+            background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-family: inherit;
+            font-size: 12px;
+            color: var(--text-secondary);
+            transition: all var(--transition-fast);
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .debug-toggle:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        .debug-toggle-left {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .debug-toggle-icon {
+            transition: transform var(--transition-fast);
+            font-size: 10px;
+            display: inline-block;
+        }
+
+        .debug-toggle.open .debug-toggle-icon {
+            transform: rotate(90deg);
+        }
+
+        .debug-content {
+            display: none;
+            padding: var(--spacing-md);
+            border-top: 1px solid var(--border);
+            background: var(--bg-primary);
+        }
+
+        .debug-content.open {
+            display: block;
+        }
+
+        .debug-section {
+            margin-bottom: var(--spacing-md);
+        }
+
+        .debug-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .debug-section-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-xs);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+
+        .debug-section-content {
+            color: var(--text-secondary);
+            padding-left: var(--spacing-md);
+        }
+
+        .debug-item {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--spacing-sm);
+            padding: 2px 0;
+        }
+
+        .debug-item-icon {
+            flex-shrink: 0;
+        }
+
+        .debug-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-agent {
+            background: var(--accent-light);
+            color: var(--accent);
+            border: 1px solid var(--accent);
+        }
+
+        .badge-tool {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #86efac;
+        }
+
+        .badge-rag {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fcd34d;
+        }
+
+        .rag-score {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            margin-bottom: 4px;
+        }
+
+        .rag-score-bar {
+            flex: 1;
+            height: 6px;
+            background: var(--bg-tertiary);
+            border-radius: 3px;
+            overflow: hidden;
+            max-width: 100px;
+        }
+
+        .rag-score-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 3px;
+            transition: width var(--transition-base);
+        }
+
+        .rag-score-value {
+            font-weight: 500;
+            min-width: 40px;
+        }
+
+        .rag-text-preview {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            font-style: italic;
+            margin-top: 2px;
+            max-height: 40px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .thinking-step {
+            padding: 4px 0;
+            display: flex;
+            align-items: flex-start;
+            gap: var(--spacing-sm);
+        }
+
+        .thinking-step-icon {
+            flex-shrink: 0;
+        }
+
         /* Mobile Responsive Design */
         @media (max-width: 768px) {
             .app-container {
@@ -669,6 +838,18 @@
                     <button class="quick-action" onclick="sendQuickMessage('Generate an invoice')">
                         <span class="quick-action-icon">📄</span>
                         <span>Create Invoice</span>
+                    </button>
+                    <button class="quick-action" onclick="sendQuickMessage('Track my order. My email is john.smith@email.com')">
+                        <span class="quick-action-icon">📍</span>
+                        <span>Track Order</span>
+                    </button>
+                    <button class="quick-action" onclick="sendQuickMessage('Generate a sales report for all time')">
+                        <span class="quick-action-icon">📊</span>
+                        <span>Sales Report</span>
+                    </button>
+                    <button class="quick-action" onclick="sendQuickMessage('Generate an inventory report')">
+                        <span class="quick-action-icon">📈</span>
+                        <span>Inventory Report</span>
                     </button>
                 </div>
             </div>
@@ -874,6 +1055,14 @@
                 contentDiv.appendChild(downloadBtn);
             }
             
+            // Add debug/details panel for bot messages (always show if there's an agent name)
+            if (sender === 'bot' && (agentName || metadata)) {
+                const debugPanel = createDebugPanel(agentName, metadata || {});
+                if (debugPanel) {
+                    contentDiv.appendChild(debugPanel);
+                }
+            }
+            
             messageDiv.appendChild(avatarDiv);
             messageDiv.appendChild(contentDiv);
             
@@ -881,6 +1070,132 @@
             
             // Scroll to bottom
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Create Debug/Details Panel
+        function createDebugPanel(agentName, metadata) {
+            // Debug logging
+            console.log('Creating debug panel:', { agentName, metadata });
+            
+            const hasThinking = metadata && metadata.thinking && metadata.thinking.length > 0;
+            const hasTools = metadata && metadata.tools_used && metadata.tools_used.length > 0;
+            const hasRagResults = metadata && metadata.rag_results && metadata.rag_results.length > 0;
+            const hasLastAgent = metadata && metadata.last_agent;
+            
+            // Always create panel if there's an agent name (to show routing info)
+            if (!agentName && !hasThinking && !hasTools && !hasRagResults) {
+                return null;
+            }
+            
+            const debugDiv = document.createElement('div');
+            debugDiv.className = 'message-debug';
+            
+            // Toggle button
+            const toggleBtn = document.createElement('button');
+            toggleBtn.className = 'debug-toggle';
+            toggleBtn.innerHTML = `
+                <span class="debug-toggle-left">
+                    <span class="debug-toggle-icon">▸</span>
+                    <span>🔍 View Details</span>
+                </span>
+                <span class="debug-badge badge-agent">🤖 ${agentName || 'System'}</span>
+            `;
+            
+            // Content area
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'debug-content';
+            
+            // Routing/Agent Section
+            if (agentName || hasLastAgent) {
+                const routingSection = document.createElement('div');
+                routingSection.className = 'debug-section';
+                routingSection.innerHTML = `
+                    <div class="debug-section-title">🎯 Routing</div>
+                    <div class="debug-section-content">
+                        <div class="debug-item">
+                            <span class="debug-item-icon">→</span>
+                            <span>Routed to: <span class="debug-badge badge-agent">${agentName || 'System'}</span></span>
+                        </div>
+                        ${hasLastAgent ? `
+                        <div class="debug-item">
+                            <span class="debug-item-icon">📎</span>
+                            <span>Previous: ${metadata.last_agent}</span>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+                contentDiv.appendChild(routingSection);
+            }
+            
+            // Thinking/Reasoning Section
+            if (hasThinking) {
+                const thinkingSection = document.createElement('div');
+                thinkingSection.className = 'debug-section';
+                
+                let thinkingHtml = '<div class="debug-section-title">💭 Reasoning Steps</div><div class="debug-section-content">';
+                metadata.thinking.forEach(step => {
+                    thinkingHtml += `<div class="thinking-step"><span class="thinking-step-icon">•</span><span>${step}</span></div>`;
+                });
+                thinkingHtml += '</div>';
+                
+                thinkingSection.innerHTML = thinkingHtml;
+                contentDiv.appendChild(thinkingSection);
+            }
+            
+            // Tools Used Section
+            if (hasTools) {
+                const toolsSection = document.createElement('div');
+                toolsSection.className = 'debug-section';
+                
+                let toolsHtml = '<div class="debug-section-title">🔧 Tools Used</div><div class="debug-section-content">';
+                metadata.tools_used.forEach(tool => {
+                    toolsHtml += `<div class="debug-item"><span class="debug-badge badge-tool">⚙️ ${tool}</span></div>`;
+                });
+                toolsHtml += '</div>';
+                
+                toolsSection.innerHTML = toolsHtml;
+                contentDiv.appendChild(toolsSection);
+            }
+            
+            // RAG Results Section
+            if (hasRagResults) {
+                const ragSection = document.createElement('div');
+                ragSection.className = 'debug-section';
+                
+                let ragHtml = '<div class="debug-section-title">📚 Retrieved Context (RAG)</div><div class="debug-section-content">';
+                metadata.rag_results.forEach((result, index) => {
+                    const score = result.score || result.similarity || 0;
+                    const scorePercent = Math.round(score * 100);
+                    const text = result.text || result.content || result.page_content || '';
+                    const preview = text.substring(0, 100) + (text.length > 100 ? '...' : '');
+                    
+                    ragHtml += `
+                        <div class="rag-score">
+                            <span class="debug-badge badge-rag">#${index + 1}</span>
+                            <div class="rag-score-bar">
+                                <div class="rag-score-fill" style="width: ${scorePercent}%"></div>
+                            </div>
+                            <span class="rag-score-value">${scorePercent}%</span>
+                        </div>
+                        <div class="rag-text-preview">${preview}</div>
+                    `;
+                });
+                ragHtml += '</div>';
+                
+                ragSection.innerHTML = ragHtml;
+                contentDiv.appendChild(ragSection);
+            }
+            
+            // Toggle functionality
+            toggleBtn.onclick = () => {
+                toggleBtn.classList.toggle('open');
+                contentDiv.classList.toggle('open');
+            };
+            
+            debugDiv.appendChild(toggleBtn);
+            debugDiv.appendChild(contentDiv);
+            
+            return debugDiv;
         }
 
         // Format Message Text

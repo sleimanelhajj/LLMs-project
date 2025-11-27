@@ -13,6 +13,7 @@ from agents.catalog_agent import CatalogAgent
 from agents.company_agent import CompanyAgent
 from agents.invoice_generator_agent import InvoiceGeneratorAgent
 from agents.order_tracking_agent import OrderTrackingAgent
+from agents.report_agent import ReportAgent
 from models.schemas import QueryRequest, AgentResponse
 from config import DEFAULT_LLM_MODEL, LLM_TEMPERATURE, LLM_MAX_RETRIES
 import traceback
@@ -37,6 +38,7 @@ class OrchestratorAgent(BaseAgent):
             CompanyAgent(google_api_key=google_api_key, documents_dir="data/documents"),
             InvoiceGeneratorAgent(google_api_key=google_api_key, db_path=catalog_db_path),
             OrderTrackingAgent(),
+            ReportAgent(),
         ]
 
         self.agent_descriptions = self._build_agent_descriptions()
@@ -76,9 +78,19 @@ class OrchestratorAgent(BaseAgent):
         if any(keyword in query_lower for keyword in order_keywords):
             return False
         
+        # If query is about reports, it's NOT general conversation
+        report_keywords = [
+            "report", "sales", "revenue", "inventory", "stock level", "analytics",
+            "low stock", "best seller", "top product",
+            # Time periods often used in report follow-ups
+            "7 days", "30 days", "90 days", "all time", "last week", "last month"
+        ]
+        if any(keyword in query_lower for keyword in report_keywords):
+            return False
+        
         return any(keyword in query_lower for keyword in general_keywords)
 
-    async def route_query(self, query: str) -> Optional[BaseAgent]:
+    async def route_query(self, query: str, last_agent: str = None) -> Optional[BaseAgent]:
         if self._is_general_conversation(query):
             return None
 
@@ -94,6 +106,7 @@ Rules:
 2. **CompanyAgent**: Company info, contact details, locations, hours, delivery/shipping options, costs, policies, returns, warranties, refunds
 3. **InvoiceGeneratorAgent**: Invoice generation requests, "generate invoice", "create invoice", "make an invoice", "need invoice"
 4. **OrderTrackingAgent**: Order tracking, order status, "where is my order", "track order", "order history", "my orders", delivery status, tracking number queries
+5. **ReportAgent**: Sales reports, revenue analytics, inventory reports, stock levels, low stock alerts, best sellers, top products, business analytics
 
 Important:
 - For simple greetings only (hi, hello, how are you), respond with "GENERAL"
@@ -102,6 +115,10 @@ Important:
 - For company/delivery options/policy questions → CompanyAgent
 - For invoice requests → InvoiceGeneratorAgent
 - For order tracking, order status, "where is my order", order history → OrderTrackingAgent
+- For sales reports, inventory reports, analytics, stock levels → ReportAgent
+- IMPORTANT: If the query is a short response like a time period ("7 days", "30 days", "all time", "last month") or a confirmation ("yes", "no", "okay"), AND there was a previous agent, route to that same agent.
+
+Previous agent (if any): {last_agent if last_agent else "None"}
 
 Respond with ONLY the agent name or "GENERAL", nothing else."""
 
@@ -184,7 +201,13 @@ Guidelines:
 
             # Route query to appropriate agent
             thinking_log.append(f"📝 Analyzing query: '{request.query}'")
-            agent = await self.route_query(request.query)
+            
+            # Get last agent from metadata for context-aware routing
+            last_agent = metadata.get("last_agent", None)
+            if last_agent:
+                thinking_log.append(f"📎 Previous agent context: {last_agent}")
+            
+            agent = await self.route_query(request.query, last_agent)
 
             # Handle general conversation
             if not agent:
@@ -207,11 +230,12 @@ Guidelines:
             
             response = await agent.process_query(request)
             
-            # Add thinking log to response metadata
+            # Add thinking log and last_agent to response metadata
             if response.data:
                 response.data["thinking"] = thinking_log
+                response.data["last_agent"] = agent.name
             else:
-                response.data = {"thinking": thinking_log}
+                response.data = {"thinking": thinking_log, "last_agent": agent.name}
             
             return response
 

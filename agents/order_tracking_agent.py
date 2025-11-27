@@ -291,15 +291,31 @@ Always be helpful and provide clear, formatted responses."""
             dict with response and metadata
         """
         try:
+            # Build messages with conversation history for context
+            messages = []
+            
+            # Add conversation history if available
+            if context and context.get("history"):
+                for msg in context["history"][-6:]:  # Last 6 messages for context
+                    role = msg.get("role", "user")
+                    content = msg.get("content", "")
+                    if role == "user":
+                        messages.append({"role": "user", "content": content})
+                    else:
+                        messages.append({"role": "assistant", "content": content})
+            
+            # Add current query
+            messages.append({"role": "user", "content": query})
+            
             # Invoke the agent with messages format
             result = await self.agent.ainvoke({
-                "messages": [{"role": "user", "content": query}]
+                "messages": messages
             })
             
             # Extract the output from messages
-            messages = result.get("messages", [])
-            if messages:
-                last_message = messages[-1]
+            result_messages = result.get("messages", [])
+            if result_messages:
+                last_message = result_messages[-1]
                 response = last_message.content if hasattr(last_message, 'content') else str(last_message)
             else:
                 response = "I couldn't process your order tracking request."
@@ -313,6 +329,8 @@ Always be helpful and provide clear, formatted responses."""
             
         except Exception as e:
             print(f"[OrderTrackingAgent] Error: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return {
                 "success": False,
                 "response": f"I encountered an error while tracking your order: {str(e)}",
@@ -322,7 +340,9 @@ Always be helpful and provide clear, formatted responses."""
     
     async def process_query(self, request: QueryRequest) -> AgentResponse:
         """Process an order tracking query - required by BaseAgent."""
-        result = await self.process(request.query)
+        # Pass metadata context to process
+        context = request.metadata if request.metadata else {}
+        result = await self.process(request.query, context)
         return AgentResponse(
             agent_name=self.name,
             response=result.get("response", ""),

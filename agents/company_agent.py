@@ -354,7 +354,15 @@ Focus only on {data_type} information."""
                     "retrieved_chunks": len(retrieved_chunks),
                     "relevance_scores": [float(chunk["score"]) for chunk in retrieved_chunks],
                     "sources": [chunk["metadata"] for chunk in retrieved_chunks],
-                    "tools_used": ["search_company_info"]
+                    "tools_used": ["search_company_info"],
+                    "rag_results": [
+                        {
+                            "score": float(chunk["score"]),
+                            "text": chunk["content"][:200],  # First 200 chars for preview
+                            "source": chunk["metadata"].get("source", "Unknown")
+                        }
+                        for chunk in retrieved_chunks[:3]  # Top 3 results for UI
+                    ]
                 }
             )
             

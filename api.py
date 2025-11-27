@@ -125,23 +125,32 @@ async def chat(request: ChatRequest):
         history = conversation_history[session_id]
 
         invoice_state = None
+        last_agent = None
         if history:
             for msg in reversed(history):
-                if msg.get("role") == "assistant" and msg.get("invoice_state"):
-                    invoice_state = msg["invoice_state"]
-                    break
+                if msg.get("role") == "assistant":
+                    if msg.get("invoice_state") and not invoice_state:
+                        invoice_state = msg["invoice_state"]
+                    if msg.get("last_agent") and not last_agent:
+                        last_agent = msg["last_agent"]
+                    if invoice_state and last_agent:
+                        break
 
         metadata = {"history": history[-5:]}
         if invoice_state:
             metadata["invoice_state"] = invoice_state
+        if last_agent:
+            metadata["last_agent"] = last_agent
 
         query_request = QueryRequest(query=request.message, metadata=metadata)
 
         response: AgentResponse = await orchestrator.process_query(query_request)
 
         response_invoice_state = None
+        response_last_agent = None
         if hasattr(response, "data") and response.data:
             response_invoice_state = response.data.get("invoice_state")
+            response_last_agent = response.data.get("last_agent")
 
         history.append({"role": "user", "content": request.message})
         history.append(
@@ -149,6 +158,7 @@ async def chat(request: ChatRequest):
                 "role": "assistant",
                 "content": response.response,
                 "invoice_state": response_invoice_state,
+                "last_agent": response_last_agent or response.agent_name,
             }
         )
 
