@@ -10,13 +10,9 @@ from langchain_core.messages import SystemMessage, HumanMessage
 
 from agents.base_agent import BaseAgent
 from agents.catalog_agent import CatalogAgent
-from agents.delivery_agent import DeliveryAgent
-from agents.company_info_agent import CompanyInfoAgent
-from agents.policy_agent import PolicyAgent
-from agents.pdf_agent import PDFAnalysisAgent
+from agents.company_agent import CompanyAgent
 from agents.invoice_generator_agent import InvoiceGeneratorAgent
 from models.schemas import QueryRequest, AgentResponse
-from utils.vector_db_manager import initialize_policy_vector_db
 from config import DEFAULT_LLM_MODEL, LLM_TEMPERATURE, LLM_MAX_RETRIES
 import traceback
 
@@ -35,15 +31,9 @@ class OrchestratorAgent(BaseAgent):
             max_retries=LLM_MAX_RETRIES,
         )
 
-        print("Initializing policy vector database...")
-        policy_vector_db = initialize_policy_vector_db()
-
         self.agents: List[BaseAgent] = [
             CatalogAgent(db_path=catalog_db_path, google_api_key=google_api_key),
-            DeliveryAgent(config_path="data/delivery_rules.yaml"),
-            CompanyInfoAgent(data_path="data/company_info.yaml"),
-            PolicyAgent(vector_db_manager=policy_vector_db, google_api_key=google_api_key),
-            PDFAnalysisAgent(google_api_key=google_api_key),
+            CompanyAgent(google_api_key=google_api_key, documents_dir="data/documents"),
             InvoiceGeneratorAgent(google_api_key=google_api_key, db_path=catalog_db_path),
         ]
 
@@ -59,13 +49,23 @@ class OrchestratorAgent(BaseAgent):
         return "\n".join(descriptions)
 
     def _is_general_conversation(self, query: str) -> bool:
+        """Check if query is purely social/greeting - NOT product questions."""
         general_keywords = [
             "hello", "hi", "hey", "good morning", "good afternoon", "good evening",
             "how are you", "what's up", "thanks", "thank you", "bye", "goodbye",
-            "nice", "great", "awesome", "cool", "recommend", "suggest", "advice",
-            "what do you think", "opinion", "best", "better",
+            "nice to meet", "great talking",
         ]
         query_lower = query.lower()
+        
+        # If query mentions products, it's NOT general conversation
+        product_keywords = [
+            "rope", "wire", "bag", "cable", "nylon", "polypropylene", "canvas",
+            "product", "buy", "purchase", "recommend", "better", "best", "which one",
+            "strength", "heavy", "blocks", "attach", "price", "stock", "inventory"
+        ]
+        if any(keyword in query_lower for keyword in product_keywords):
+            return False
+        
         return any(keyword in query_lower for keyword in general_keywords)
 
     async def route_query(self, query: str) -> Optional[BaseAgent]:
@@ -80,18 +80,16 @@ Available agents:
 Your task: Analyze the user's query and determine which agent should handle it.
 
 Rules:
-1. **CatalogAgent**: Product searches, inventory, prices, SKUs, "what products", "show me", "find", specific product inquiries
-2. **DeliveryAgent**: Shipping, delivery times, costs, "delivery", "shipping", "send", "how long", "when will it arrive"
-3. **CompanyInfoAgent**: Contact info, locations, hours, "where are you", "contact", "hours", "address"
-4. **PolicyAgent**: Returns, warranties, terms & conditions, "policy", "return", "warranty", "refund"
-5. **PDFAnalysisAgent**: Questions about uploaded PDF documents, "pdf", "document", "uploaded file"
-6. **InvoiceGeneratorAgent**: Invoice generation requests, "generate invoice", "create invoice", "make an invoice", "need invoice"
+1. **CatalogAgent**: Product searches, inventory, prices, SKUs, product recommendations, product comparisons, "which one is better", "recommend", "best for", strength/weight/material questions about products, anything about ropes/wires/bags/cables
+2. **CompanyAgent**: Company info, contact details, locations, hours, delivery/shipping options, costs, policies, returns, warranties, refunds
+3. **InvoiceGeneratorAgent**: Invoice generation requests, "generate invoice", "create invoice", "make an invoice", "need invoice"
 
 Important:
-- For greetings/chitchat, respond with "GENERAL"
-- For recommendation requests without specific context, respond with "GENERAL"
-- For product-specific questions (cables, ropes, bags), choose CatalogAgent
-- For invoice requests, choose InvoiceGeneratorAgent
+- For simple greetings only (hi, hello, how are you), respond with "GENERAL"
+- For ANY question about products, materials, recommendations, or comparisons → CatalogAgent
+- If user mentions rope, nylon, polypropylene, wire, bag, blocks, heavy, strength → CatalogAgent
+- For company/delivery/policy questions → CompanyAgent
+- For invoice requests → InvoiceGeneratorAgent
 
 Respond with ONLY the agent name or "GENERAL", nothing else."""
 

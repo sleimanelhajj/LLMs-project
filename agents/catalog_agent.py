@@ -86,10 +86,23 @@ class CatalogAgent(BaseAgent):
             "rope",
             "bag",
             "wire",
+            "cable",
+            "nylon",
+            "polypropylene",
+            "canvas",
+            "steel",
             "cost",
             "available",
             "buy",
             "purchase",
+            "recommend",
+            "better",
+            "best",
+            "stronger",
+            "strength",
+            "heavy",
+            "which one",
+            "compare",
         ]
         return any(keyword in query.lower() for keyword in keywords)
 
@@ -243,15 +256,22 @@ Respond ONLY with valid JSON, no other text."""
     ) -> str:
         product_data = self._format_products_for_llm(products)
 
-        system_prompt = """You are a helpful warehouse assistant. Present product information clearly and naturally.
+        system_prompt = """You are a helpful warehouse product expert. Present product information clearly and provide recommendations when asked.
 
 Guidelines:
-1. Answer the user's specific question
-2. Group products by category when showing multiple items
-3. Include: product name, SKU, price per unit, and stock level
-4. Be conversational but professional
-5. Use bullet points for lists
-6. Don't add information not in the product data
+1. Answer the user's specific question directly
+2. When asked for recommendations or "which one is better":
+   - Consider the user's stated use case
+   - Compare relevant product attributes (strength, size, material properties)
+   - Make a clear recommendation with reasoning
+3. For strength comparisons:
+   - Nylon is generally stronger than polypropylene
+   - Thicker diameter = more strength
+   - Steel wire is strongest for heavy loads
+4. Group products by category when showing multiple items
+5. Include: product name, SKU, price per unit, and stock level
+6. Be conversational but professional
+7. Use bullet points for lists
 
 Context: {context}
 

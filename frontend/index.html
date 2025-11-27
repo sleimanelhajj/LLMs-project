@@ -244,6 +244,8 @@
             display: flex;
             flex-direction: column;
             background: var(--bg-primary);
+            height: 100vh;
+            overflow: hidden;
         }
 
         /* Chat Header */
@@ -255,6 +257,7 @@
             align-items: center;
             justify-content: space-between;
             min-height: 60px;
+            flex-shrink: 0;
         }
 
         .header-info {
@@ -301,14 +304,16 @@
             color: var(--text-primary);
         }
 
-        /* Messages Container */
+        /* Messages Container - Scrollable */
         .messages-container {
             flex: 1;
             overflow-y: auto;
+            overflow-x: hidden;
             padding: var(--spacing-lg);
             display: flex;
             flex-direction: column;
             gap: var(--spacing-lg);
+            min-height: 0;
         }
 
         /* Custom Scrollbar */
@@ -428,11 +433,12 @@
             opacity: 0.4;
         }
 
-        /* Input Area */
+        /* Input Area - Fixed at bottom */
         .input-area {
             padding: var(--spacing-md) var(--spacing-lg);
             background: var(--bg-primary);
             border-top: 1px solid var(--border);
+            flex-shrink: 0;
         }
 
         .input-wrapper {
@@ -449,30 +455,9 @@
             align-items: center;
         }
 
-        .attach-button {
-            position: absolute;
-            left: var(--spacing-sm);
-            width: 32px;
-            height: 32px;
-            border: none;
-            background: transparent;
-            color: var(--text-tertiary);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 4px;
-            transition: all var(--transition-fast);
-        }
-
-        .attach-button:hover {
-            color: var(--text-secondary);
-            background: var(--bg-secondary);
-        }
-
         .message-input {
             width: 100%;
-            padding: var(--spacing-sm) var(--spacing-sm) var(--spacing-sm) 44px;
+            padding: var(--spacing-sm) var(--spacing-md);
             border: 1px solid var(--border);
             border-radius: 8px;
             background: var(--bg-primary);
@@ -513,11 +498,6 @@
         .send-button:disabled {
             opacity: 0.5;
             cursor: not-allowed;
-        }
-
-        /* File Input Hidden */
-        #file-input {
-            display: none;
         }
 
         /* Toast Notifications */
@@ -749,8 +729,7 @@
                             <br><br>
                             • Product catalog and pricing<br>
                             • Shipping and delivery information<br>
-                            • Inventory management<br>
-                            • PDF document analysis<br>
+                            • Company policies and contact info<br>
                             • Invoice generation<br>
                             <br>
                             How can I assist you today?
@@ -763,10 +742,6 @@
             <div class="input-area">
                 <div class="input-wrapper">
                     <div class="input-group">
-                        <button class="attach-button" onclick="document.getElementById('file-input').click()" title="Attach file">
-                            📎
-                        </button>
-                        <input type="file" id="file-input" accept=".pdf" onchange="handleFileUpload(event)" class="hidden">
                         <input 
                             type="text" 
                             class="message-input" 
@@ -774,6 +749,7 @@
                             placeholder="Type your message..."
                             onkeydown="handleEnterKey(event)"
                             autocomplete="off"
+                            style="padding-left: var(--spacing-md);"
                         >
                     </div>
                     <button class="send-button" id="send-button" onclick="sendMessage()">
@@ -977,39 +953,6 @@
         function sendQuickMessage(message) {
             document.getElementById('message-input').value = message;
             sendMessage();
-        }
-
-        // Handle File Upload
-        async function handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            showToast('Uploading PDF...', 'info');
-
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('session_id', sessionId);
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/upload-pdf`, {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    showToast('PDF uploaded successfully', 'success');
-                    addMessage(`PDF "${file.name}" has been uploaded and analyzed. You can now ask questions about its contents.`, 'bot');
-                } else {
-                    showToast('Upload failed. Please try again.', 'error');
-                }
-            } catch (error) {
-                showToast('Upload error. Please check your connection.', 'error');
-                console.error('Upload error:', error);
-            }
-
-            event.target.value = '';
         }
 
         // Download Invoice
