@@ -164,7 +164,6 @@
 
         .sidebar-section:last-child {
             border-bottom: none;
-            margin-top: auto;
         }
 
         .section-title {
@@ -533,8 +532,8 @@
         .download-button {
             margin-top: var(--spacing-sm);
             padding: var(--spacing-sm) var(--spacing-md);
-            background: var(--accent-light);
-            color: var(--accent);
+            background: var(--accent);
+            color: white;
             border: 1px solid var(--accent);
             border-radius: 6px;
             font-size: 13px;
@@ -547,8 +546,8 @@
         }
 
         .download-button:hover {
-            background: var(--accent);
-            color: white;
+            background: var(--accent-hover);
+            border-color: var(--accent-hover);
         }
 
         /* Mobile Responsive Design */
@@ -673,24 +672,6 @@
                     </button>
                 </div>
             </div>
-
-            <div class="sidebar-section">
-                <h2 class="section-title">Session Info</h2>
-                <div class="stats">
-                    <div class="stat-item">
-                        <span class="stat-label">Messages</span>
-                        <span class="stat-value" id="message-count">0</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Duration</span>
-                        <span class="stat-value" id="session-time">00:00</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Status</span>
-                        <span class="stat-value">Connected</span>
-                    </div>
-                </div>
-            </div>
         </aside>
 
         <!-- Main Content Area -->
@@ -773,23 +754,12 @@
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
-            updateSessionTimer();
-            setInterval(updateSessionTimer, 1000);
             document.getElementById('message-input').focus();
         });
 
         // Generate Session ID
         function generateSessionId() {
             return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-        }
-
-        // Update Session Timer
-        function updateSessionTimer() {
-            const elapsed = Math.floor((Date.now() - sessionStartTime) / 1000);
-            const minutes = Math.floor(elapsed / 60);
-            const seconds = elapsed % 60;
-            document.getElementById('session-time').textContent = 
-                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         }
 
         // Get Current Time
@@ -801,32 +771,40 @@
         // Send Message
         async function sendMessage() {
             const input = document.getElementById('message-input');
+            const sendBtn = document.getElementById('send-button');
             const message = input.value.trim();
             
             if (!message) return;
 
-            // Disable input
+            // Disable input and clear immediately
             input.disabled = true;
-            document.getElementById('send-button').disabled = true;
+            sendBtn.disabled = true;
+            const sentMessage = message;
+            input.value = '';
 
             // Add user message
-            addMessage(message, 'user');
-            input.value = '';
+            addMessage(sentMessage, 'user');
 
             // Show typing indicator
             showTypingIndicator();
 
             try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
                 const response = await fetch(`${API_BASE_URL}/api/chat`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        message: message,
+                        message: sentMessage,
                         session_id: sessionId
-                    })
+                    }),
+                    signal: controller.signal
                 });
+
+                clearTimeout(timeoutId);
 
                 const data = await response.json();
                 hideTypingIndicator();
@@ -834,17 +812,21 @@
                 if (data.success) {
                     addMessage(data.response, 'bot', data.agent_name, data.metadata);
                 } else {
-                    addMessage('Sorry, I encountered an error. Please try again.', 'bot');
+                    addMessage(data.response || 'Sorry, I encountered an error. Please try again.', 'bot');
                 }
             } catch (error) {
                 hideTypingIndicator();
-                addMessage('Connection error. Please check your connection and try again.', 'bot');
+                if (error.name === 'AbortError') {
+                    addMessage('Request timed out. Please try again.', 'bot');
+                } else {
+                    addMessage('Connection error. Please check your connection and try again.', 'bot');
+                }
                 console.error('Error:', error);
             }
 
             // Re-enable input
             input.disabled = false;
-            document.getElementById('send-button').disabled = false;
+            sendBtn.disabled = false;
             input.focus();
         }
 
@@ -880,7 +862,10 @@
             bubbleDiv.className = `message-bubble ${sender}-bubble`;
             bubbleDiv.innerHTML = formatMessage(text);
             
-            // Add download button if invoice metadata exists
+            contentDiv.appendChild(metaDiv);
+            contentDiv.appendChild(bubbleDiv);
+            
+            // Add download button if invoice metadata exists (after the bubble)
             if (metadata && metadata.invoice_result && metadata.invoice_result.invoice_number) {
                 const downloadBtn = document.createElement('button');
                 downloadBtn.className = 'download-button';
@@ -889,17 +874,10 @@
                 contentDiv.appendChild(downloadBtn);
             }
             
-            contentDiv.appendChild(metaDiv);
-            contentDiv.appendChild(bubbleDiv);
-            
             messageDiv.appendChild(avatarDiv);
             messageDiv.appendChild(contentDiv);
             
             messagesContainer.appendChild(messageDiv);
-            
-            // Update message count
-            messageCount++;
-            document.getElementById('message-count').textContent = messageCount;
             
             // Scroll to bottom
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -996,7 +974,6 @@
                 const messagesContainer = document.getElementById('messages');
                 messagesContainer.innerHTML = '';
                 messageCount = 0;
-                document.getElementById('message-count').textContent = '0';
                 
                 // Add welcome message again
                 addMessage('Chat cleared. How can I help you?', 'bot');

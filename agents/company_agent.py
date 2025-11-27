@@ -9,7 +9,6 @@ Tools:
 2. get_structured_data - Get structured data (delivery options, locations, etc.)
 """
 
-import os
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 import PyPDF2
