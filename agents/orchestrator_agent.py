@@ -12,6 +12,7 @@ from agents.base_agent import BaseAgent
 from agents.catalog_agent import CatalogAgent
 from agents.company_agent import CompanyAgent
 from agents.invoice_generator_agent import InvoiceGeneratorAgent
+from agents.order_tracking_agent import OrderTrackingAgent
 from models.schemas import QueryRequest, AgentResponse
 from config import DEFAULT_LLM_MODEL, LLM_TEMPERATURE, LLM_MAX_RETRIES
 import traceback
@@ -35,6 +36,7 @@ class OrchestratorAgent(BaseAgent):
             CatalogAgent(db_path=catalog_db_path, google_api_key=google_api_key),
             CompanyAgent(google_api_key=google_api_key, documents_dir="data/documents"),
             InvoiceGeneratorAgent(google_api_key=google_api_key, db_path=catalog_db_path),
+            OrderTrackingAgent(),
         ]
 
         self.agent_descriptions = self._build_agent_descriptions()
@@ -66,6 +68,14 @@ class OrchestratorAgent(BaseAgent):
         if any(keyword in query_lower for keyword in product_keywords):
             return False
         
+        # If query is about orders, it's NOT general conversation
+        order_keywords = [
+            "order", "track", "tracking", "delivery", "shipped", "shipping",
+            "where is my", "order history", "my orders", "status"
+        ]
+        if any(keyword in query_lower for keyword in order_keywords):
+            return False
+        
         return any(keyword in query_lower for keyword in general_keywords)
 
     async def route_query(self, query: str) -> Optional[BaseAgent]:
@@ -83,13 +93,15 @@ Rules:
 1. **CatalogAgent**: Product searches, inventory, prices, SKUs, product recommendations, product comparisons, "which one is better", "recommend", "best for", strength/weight/material questions about products, anything about ropes/wires/bags/cables
 2. **CompanyAgent**: Company info, contact details, locations, hours, delivery/shipping options, costs, policies, returns, warranties, refunds
 3. **InvoiceGeneratorAgent**: Invoice generation requests, "generate invoice", "create invoice", "make an invoice", "need invoice"
+4. **OrderTrackingAgent**: Order tracking, order status, "where is my order", "track order", "order history", "my orders", delivery status, tracking number queries
 
 Important:
 - For simple greetings only (hi, hello, how are you), respond with "GENERAL"
 - For ANY question about products, materials, recommendations, or comparisons → CatalogAgent
 - If user mentions rope, nylon, polypropylene, wire, bag, blocks, heavy, strength → CatalogAgent
-- For company/delivery/policy questions → CompanyAgent
+- For company/delivery options/policy questions → CompanyAgent
 - For invoice requests → InvoiceGeneratorAgent
+- For order tracking, order status, "where is my order", order history → OrderTrackingAgent
 
 Respond with ONLY the agent name or "GENERAL", nothing else."""
 
