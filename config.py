@@ -12,18 +12,13 @@ if not GOOGLE_API_KEY:
     print("⚠️  WARNING: GOOGLE_API_KEY not found in environment variables")
     print("Please add GOOGLE_API_KEY=your_key_here to your .env file")
 
+# Project root directory (where config.py is located)
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+
 # Database Configuration
-DATABASE_DIR = "data"
+DATABASE_DIR = os.path.join(PROJECT_ROOT, "data")
 CATALOG_DB_PATH = os.path.join(DATABASE_DIR, "catalog.db")
 VECTOR_DB_PATH = os.path.join(DATABASE_DIR, "vector_db")
-
-# MCP Server Configuration
-MCP_HOST = "127.0.0.1"
-MCP_PORT = 8899
-
-# A2A Server Configuration
-A2A_HOST = "localhost"
-A2A_PORT = 8001
 
 # FastAPI Configuration
 API_HOST = "0.0.0.0"
@@ -42,10 +37,9 @@ LLM_TEMPERATURE = 0.1  # Low temperature for consistent responses
 LLM_MAX_RETRIES = 2  # Reduce retries to fail faster
 
 # File Paths
-TEMPLATES_DIR = "templates"
-DATA_DIR = "data"
+TEMPLATES_DIR = os.path.join(PROJECT_ROOT, "templates")
+DATA_DIR = os.path.join(PROJECT_ROOT, "data")
 INVOICES_DIR = os.path.join(DATA_DIR, "invoices")
-UPLOADS_DIR = os.path.join(DATA_DIR, "uploads")
 
 # Agent-specific paths
 COMPANY_INFO_PATH = os.path.join(DATA_DIR, "company_info.yaml")
@@ -55,6 +49,5 @@ POLICY_VECTOR_DB_PATH = os.path.join(DATA_DIR, "vector_dbs", "policy_vectordb")
 # Ensure directories exist
 os.makedirs(DATABASE_DIR, exist_ok=True)
 os.makedirs(INVOICES_DIR, exist_ok=True)
-os.makedirs(UPLOADS_DIR, exist_ok=True)
-os.makedirs(TEMPLATES_DIR, exist_ok=True)
+# templates/ removed - not currently used
 os.makedirs(os.path.join(DATA_DIR, "vector_dbs"), exist_ok=True)
