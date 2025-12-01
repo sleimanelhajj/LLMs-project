@@ -160,7 +160,6 @@ Your capabilities:
 - Provide delivery information
 - Share company details
 - Explain policies
-- Analyze uploaded PDFs
 - Generate invoices
 
 Guidelines:

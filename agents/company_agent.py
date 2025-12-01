@@ -247,7 +247,7 @@ You answer questions about:
     # ==================== TOOL 2: get_structured_data ====================
     async def get_structured_data(self, data_type: str) -> Dict[str, Any]:
         """
-        Tool 2: Get structured information extracted from context.
+        Tool 2: Get structured information extracted from context in human-readable format.
         
         Args:
             data_type: Type of data to retrieve:
@@ -258,7 +258,7 @@ You answer questions about:
                 - "policies_summary": Quick policy summary
         
         Returns:
-            Structured data dictionary
+            Structured data dictionary with human-readable content
         """
         if self.vector_store is None:
             return {"error": "No company documents loaded"}
@@ -272,26 +272,65 @@ You answer questions about:
             "policies_summary": "return policy warranty refund exchange terms"
         }
         
+        # Human-readable formatting instructions for each data type
+        format_instructions = {
+            "delivery_options": """Format the response as a friendly summary:
+- Start with a brief intro sentence
+- List each shipping option with its cost and delivery time
+- Use bullet points for clarity
+- End with any important notes about shipping""",
+            
+            "locations": """Format the response as a friendly summary:
+- List each location with full address
+- Include any relevant details (hours, services available)
+- Use clear formatting with line breaks between locations""",
+            
+            "contact": """Format the response as a friendly summary:
+- Provide phone number(s) with department names
+- Include email address(es)
+- Mention business hours for contact
+- Add any other contact methods (chat, mail, etc.)""",
+            
+            "hours": """Format the response as a friendly summary:
+- List regular business hours by day
+- Mention any holiday schedules or exceptions
+- Include timezone if relevant""",
+            
+            "policies_summary": """Format the response as a friendly, easy-to-read summary:
+- Use clear section headers (e.g., "📦 Returns", "🔄 Exchanges", "🛡️ Warranty")
+- Use bullet points for key details
+- Highlight important timeframes and conditions
+- Keep it conversational but informative
+- End with how to get more help if needed"""
+        }
+        
         query = search_queries.get(data_type, data_type)
         results = await self.search_company_info(query, k=3)
         
         if not results:
             return {"error": f"No information found for {data_type}"}
         
-        # Use LLM to extract structured data
+        # Use LLM to extract and format data in human-readable way
         context = "\n\n".join([r["content"] for r in results])
+        format_guide = format_instructions.get(data_type, "Format the response in a clear, friendly, and easy-to-read way.")
         
-        extraction_prompt = f"""Based on the following context, extract structured information about "{data_type}".
+        extraction_prompt = f"""Based on the following context, provide information about "{data_type}".
 
 Context:
 {context}
 
-Return the information in a clear, organized format. If specific details are not available, indicate "Not specified".
-Focus only on {data_type} information."""
+{format_guide}
+
+Important:
+- Write in a conversational, helpful tone
+- Do NOT use JSON format
+- Do NOT use technical formatting
+- Make it easy for a customer to read and understand
+- If specific details are not available, say so naturally"""
 
         try:
             messages = [
-                SystemMessage(content="You extract and organize information from documents. Be concise and accurate."),
+                SystemMessage(content="You are a friendly customer service assistant. You provide clear, helpful information in a conversational tone. Never use JSON or technical formatting."),
                 HumanMessage(content=extraction_prompt)
             ]
             
@@ -312,6 +351,7 @@ Focus only on {data_type} information."""
         
         try:
             query = request.query
+            query_lower = query.lower()
             
             # Check if vector store is available
             if self.vector_store is None:
@@ -324,8 +364,33 @@ Focus only on {data_type} information."""
                     error="Vector store not initialized - no documents found"
                 )
             
-            # Tool 1: Search for relevant information
-            print(f"[CompanyAgent] Searching for: {query}")
+            # Tool 2: Check if query matches structured data types
+            structured_data_result = await self._check_structured_data_query(query_lower)
+            
+            if structured_data_result:
+                print(f"[CompanyAgent] Using Tool 2: get_structured_data for '{structured_data_result['data_type']}'")
+                
+                # Get structured data
+                structured_data = await self.get_structured_data(structured_data_result["data_type"])
+                
+                if "error" not in structured_data:
+                    # Also do RAG search for additional context
+                    retrieved_chunks = await self.search_company_info(query, k=3)
+                    
+                    return AgentResponse(
+                        agent_name=self.name,
+                        response=structured_data["content"],
+                        success=True,
+                        data={
+                            "retrieved_chunks": len(retrieved_chunks),
+                            "structured_data_type": structured_data["data_type"],
+                            "sources": structured_data.get("sources", []),
+                            "tools_used": ["get_structured_data", "search_company_info"],
+                        }
+                    )
+            
+            # Tool 1: Search for relevant information (default RAG approach)
+            print(f"[CompanyAgent] Using Tool 1: search_company_info for '{query}'")
             retrieved_chunks = await self.search_company_info(query, k=5)
             
             if not retrieved_chunks:
@@ -334,7 +399,7 @@ Focus only on {data_type} information."""
                     response="I couldn't find specific information about that in our company documents. "
                              "Please contact customer service at support@warehousesupply.com or call (555) 123-4567.",
                     success=True,
-                    data={"retrieved_chunks": 0}
+                    data={"retrieved_chunks": 0, "tools_used": ["search_company_info"]}
                 )
             
             # Format context from retrieved chunks
@@ -377,6 +442,40 @@ Focus only on {data_type} information."""
                 success=False,
                 error=str(e)
             )
+    
+    async def _check_structured_data_query(self, query_lower: str) -> Optional[Dict[str, str]]:
+        """Check if query should use structured data extraction."""
+        
+        # Define patterns for each structured data type
+        structured_patterns = {
+            "delivery_options": [
+                "delivery option", "shipping option", "shipping method", "delivery method",
+                "how can i get", "shipping cost", "delivery cost", "express shipping",
+                "overnight", "standard shipping", "what shipping", "what delivery"
+            ],
+            "locations": [
+                "where are you", "location", "address", "warehouse location",
+                "office address", "branch", "store location", "where is"
+            ],
+            "contact": [
+                "contact", "phone number", "email", "how to reach", "customer service",
+                "support number", "call you", "get in touch"
+            ],
+            "hours": [
+                "business hours", "opening hours", "when are you open", "working hours",
+                "what time", "open until", "close at", "operating hours"
+            ],
+            "policies_summary": [
+                "return policy", "refund policy", "warranty", "exchange policy",
+                "terms and conditions", "cancellation policy", "what is your policy"
+            ]
+        }
+        
+        for data_type, patterns in structured_patterns.items():
+            if any(pattern in query_lower for pattern in patterns):
+                return {"data_type": data_type}
+        
+        return None
     
     def _format_context(self, chunks: List[Dict[str, Any]]) -> str:
         """Format retrieved chunks into context for LLM."""

@@ -3,7 +3,7 @@ Pydantic models for request/response validation
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 from datetime import datetime
 
 
@@ -26,15 +26,20 @@ class AgentResponse(BaseModel):
 
 class ProductModel(BaseModel):
     """Product model matching the catalog database schema."""
-    id: int
     sku: str
     name: str
     category: str
-    unit_price: float
-    unit_of_measure: str  # Changed from 'unit' to match database
-    quantity_on_hand: int
     description: Optional[str] = None
-    specifications: Optional[str] = None
+    material: Optional[str] = None
+    diameter_mm: Optional[float] = None
+    weight_kg: Optional[float] = None
+    breaking_strength: Optional[str] = None
+    unit: str
+    unit_price: float
+    currency: str = "USD"
+    quantity_on_hand: int
+    min_order_qty: int = 1
+    lead_time_days: int = 1
 
     class Config:
         from_attributes = True

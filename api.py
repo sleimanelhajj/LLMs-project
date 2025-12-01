@@ -1,13 +1,10 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
-import os
 import uuid
 from pathlib import Path
-import tempfile
-import shutil
 import sqlite3
 
 from agents.orchestrator_agent import OrchestratorAgent
@@ -64,7 +61,6 @@ app.add_middleware(
 orchestrator: Optional[OrchestratorAgent] = None
 invoice_generator: Optional[InvoiceGeneratorAgent] = None
 conversation_history: Dict[str, List[Dict[str, str]]] = {}
-pdf_sessions: Dict[str, str] = {}
 
 
 @app.on_event("startup")
@@ -95,7 +91,6 @@ async def root():
         "endpoints": {
             "chat": "/api/chat",
             "invoice": "/api/invoice",
-            "upload_pdf": "/api/upload-pdf",
             "download_invoice": "/api/invoice/{invoice_number}",
             "health": "/health",
         },
@@ -178,49 +173,6 @@ async def chat(request: ChatRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/upload-pdf")
-async def upload_pdf(file: UploadFile = File(...), session_id: Optional[str] = None):
-    if not orchestrator:
-        raise HTTPException(status_code=503, detail="Orchestrator not initialized")
-
-    try:
-        if not file.filename.endswith(".pdf"):
-            raise HTTPException(status_code=400, detail="Only PDF files are supported")
-
-        session_id = session_id or str(uuid.uuid4())
-
-        temp_dir = Path(tempfile.gettempdir()) / "chatbot_pdfs"
-        temp_dir.mkdir(exist_ok=True)
-
-        pdf_path = temp_dir / f"{session_id}_{file.filename}"
-
-        with open(pdf_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-
-        result = await orchestrator.pdf_agent.upload_pdf(str(pdf_path))
-
-        if result["success"]:
-            pdf_sessions[session_id] = str(pdf_path)
-
-            return {
-                "success": True,
-                "session_id": session_id,
-                "filename": file.filename,
-                "message": "PDF uploaded successfully. You can now ask questions about it.",
-                "pages": result.get("pages", 0),
-            }
-        else:
-            raise HTTPException(
-                status_code=400, detail=result.get("error", "PDF upload failed")
-            )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"[API] Error uploading PDF: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 @app.post("/api/invoice", response_model=InvoiceResponse)
 async def generate_invoice(request: InvoiceRequest):
     if not invoice_generator:
@@ -279,12 +231,6 @@ async def clear_session(session_id: str):
     try:
         if session_id in conversation_history:
             del conversation_history[session_id]
-
-        if session_id in pdf_sessions:
-            pdf_path = pdf_sessions[session_id]
-            if os.path.exists(pdf_path):
-                os.remove(pdf_path)
-            del pdf_sessions[session_id]
 
         return {"success": True, "message": "Session cleared"}
 

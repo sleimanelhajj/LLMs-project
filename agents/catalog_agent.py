@@ -59,15 +59,20 @@ class CatalogAgent(BaseAgent):
             products = []
             for row in rows:
                 row_dict = {
-                    "id": row["id"],
                     "sku": row["sku"],
                     "name": row["name"],
                     "category": row["category"],
-                    "unit_price": row["unit_price"],
-                    "unit_of_measure": row["unit_of_measure"],
-                    "quantity_on_hand": row["quantity_on_hand"],
                     "description": row["description"],
-                    "specifications": row["specifications"],
+                    "material": row["material"],
+                    "diameter_mm": row["diameter_mm"],
+                    "weight_kg": row["weight_kg"],
+                    "breaking_strength": row["breaking_strength"],
+                    "unit": row["unit"],
+                    "unit_price": row["unit_price"],
+                    "currency": row["currency"],
+                    "quantity_on_hand": row["quantity_on_hand"],
+                    "min_order_qty": row["min_order_qty"],
+                    "lead_time_days": row["lead_time_days"],
                 }
                 products.append(ProductModel(**row_dict))
             return products
@@ -222,14 +227,14 @@ Respond ONLY with valid JSON, no other text."""
 
         if filters.get("material"):
             material = filters["material"]
-            conditions.append("(name LIKE ? OR description LIKE ? OR specifications LIKE ?)")
+            conditions.append("(name LIKE ? OR material LIKE ? OR description LIKE ?)")
             params.extend([f"%{material}%"] * 3)
 
         if keywords and not filters.get("category") and not filters.get("material"):
             keyword_conditions = []
             for keyword in keywords:
-                keyword_conditions.append("(name LIKE ? OR category LIKE ? OR description LIKE ?)")
-                params.extend([f"%{keyword}%"] * 3)
+                keyword_conditions.append("(name LIKE ? OR category LIKE ? OR description LIKE ? OR material LIKE ?)")
+                params.extend([f"%{keyword}%"] * 4)
             if keyword_conditions:
                 conditions.append(f"({' OR '.join(keyword_conditions)})")
 
@@ -296,12 +301,26 @@ Product Data:
 
         formatted = []
         for p in products:
+            specs = []
+            if p.diameter_mm:
+                specs.append(f"Diameter: {p.diameter_mm}mm")
+            if p.material:
+                specs.append(f"Material: {p.material}")
+            if p.weight_kg:
+                specs.append(f"Weight: {p.weight_kg}kg")
+            if p.breaking_strength:
+                specs.append(f"Strength: {p.breaking_strength}")
+            
+            specs_str = " | ".join(specs) if specs else ""
+            
             formatted.append(
-                f"{p.name} ({p.sku})\n"
+                f"**{p.name}** ({p.sku})\n"
                 f"Category: {p.category}\n"
-                f"Price: ${p.unit_price:.2f}/{p.unit_of_measure}\n"
-                f"Stock: {p.quantity_on_hand} {p.unit_of_measure}s\n"
-                f"Description: {p.description or 'N/A'}"
+                f"Description: {p.description or 'N/A'}\n"
+                f"{specs_str}\n" if specs_str else ""
+                f"Price: ${p.unit_price:.2f}/{p.unit}\n"
+                f"Stock: {p.quantity_on_hand} {p.unit}s available\n"
+                f"Min Order: {p.min_order_qty} | Lead Time: {p.lead_time_days} day(s)"
             )
 
         return "\n\n".join(formatted)

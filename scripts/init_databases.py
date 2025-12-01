@@ -4,21 +4,18 @@ Initialize databases for the Employee Assistant Chatbot system.
 
 This script creates:
 1. SQLite database for product catalog
-2. Customers, orders, and order items tables
-3. Sample data for testing
-4. Directory structure for file storage
+2. Sample data for testing
+3. Directory structure for file storage
 """
 
 import sqlite3
 import os
 import sys
-from datetime import datetime, timedelta
-import random
 
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from config import CATALOG_DB_PATH, DATABASE_DIR, INVOICES_DIR, UPLOADS_DIR
+from config import CATALOG_DB_PATH, DATABASE_DIR, INVOICES_DIR
 
 
 def create_catalog_database():
@@ -32,26 +29,196 @@ def create_catalog_database():
     conn = sqlite3.connect(CATALOG_DB_PATH)
     cursor = conn.cursor()
     
-    # Create products table
-    cursor.execute("DROP TABLE IF EXISTS order_items")
-    cursor.execute("DROP TABLE IF EXISTS orders")
-    cursor.execute("DROP TABLE IF EXISTS customers")
+    # Drop existing table to ensure clean schema
     cursor.execute("DROP TABLE IF EXISTS products")
     
+    # Create products table with enhanced schema
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS products (
             sku TEXT PRIMARY KEY,
             name TEXT NOT NULL,
             category TEXT NOT NULL,
+            description TEXT,
+            material TEXT,
             diameter_mm REAL,
+            weight_kg REAL,
+            breaking_strength TEXT,
             unit TEXT NOT NULL,
             unit_price REAL NOT NULL,
             currency TEXT DEFAULT 'USD',
             quantity_on_hand INTEGER DEFAULT 0,
+            min_order_qty INTEGER DEFAULT 1,
+            lead_time_days INTEGER DEFAULT 1,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    
+    # Comprehensive product data with descriptions
+    products = [
+        # ===== ROPES =====
+        ("PP-ROPE-8MM", "Polypropylene Rope 8mm", "Ropes", 
+         "Lightweight, floating rope ideal for water applications and general purpose use. UV resistant and rot-proof.",
+         "Polypropylene", 8.0, 0.04, "120 kg", "meter", 2.50, "USD", 1500, 10, 1),
+        ("PP-ROPE-12MM", "Polypropylene Rope 12mm", "Ropes",
+         "Medium-duty floating rope perfect for marine, camping, and utility applications. Excellent chemical resistance.",
+         "Polypropylene", 12.0, 0.08, "280 kg", "meter", 3.75, "USD", 800, 10, 1),
+        ("PP-ROPE-16MM", "Polypropylene Rope 16mm", "Ropes",
+         "Heavy-duty polypropylene rope for industrial and marine use. Floats on water, resists mildew and rot.",
+         "Polypropylene", 16.0, 0.14, "480 kg", "meter", 5.25, "USD", 400, 10, 1),
+        ("NY-ROPE-10MM", "Nylon Rope 10mm", "Ropes",
+         "High-strength nylon rope with excellent shock absorption. Ideal for towing, anchoring, and climbing applications.",
+         "Nylon", 10.0, 0.07, "450 kg", "meter", 4.99, "USD", 600, 10, 1),
+        ("NY-ROPE-14MM", "Nylon Rope 14mm", "Ropes",
+         "Premium nylon rope offering superior strength and elasticity. Perfect for heavy-duty lifting and rigging.",
+         "Nylon", 14.0, 0.12, "820 kg", "meter", 7.50, "USD", 350, 10, 1),
+        ("NY-ROPE-20MM", "Nylon Rope 20mm", "Ropes",
+         "Industrial-grade nylon rope for maximum strength applications. Excellent abrasion resistance and durability.",
+         "Nylon", 20.0, 0.22, "1500 kg", "meter", 12.99, "USD", 200, 10, 2),
+        ("MN-ROPE-8MM", "Manila Rope 8mm", "Ropes",
+         "Natural fiber rope with traditional look and good grip. Biodegradable and eco-friendly option.",
+         "Manila Hemp", 8.0, 0.05, "80 kg", "meter", 1.99, "USD", 1000, 10, 1),
+        ("MN-ROPE-12MM", "Manila Rope 12mm", "Ropes",
+         "Classic natural rope for decorative and functional use. Excellent grip, ideal for gym climbing ropes.",
+         "Manila Hemp", 12.0, 0.10, "180 kg", "meter", 3.25, "USD", 700, 10, 1),
+        
+        # ===== WIRE & CABLES =====
+        ("ST-WIRE-2MM", "Galvanized Steel Wire 2mm", "Wire",
+         "Corrosion-resistant galvanized wire for fencing, crafts, and light-duty applications.",
+         "Galvanized Steel", 2.0, 0.025, "200 kg", "meter", 1.25, "USD", 2000, 20, 1),
+        ("ST-WIRE-4MM", "Galvanized Steel Wire 4mm", "Wire",
+         "Medium-gauge galvanized wire perfect for agricultural fencing and construction support.",
+         "Galvanized Steel", 4.0, 0.10, "750 kg", "meter", 2.10, "USD", 1200, 20, 1),
+        ("ST-WIRE-6MM", "Galvanized Steel Wire 6mm", "Wire",
+         "Heavy-duty galvanized wire for structural applications, guy wires, and heavy fencing.",
+         "Galvanized Steel", 6.0, 0.22, "1600 kg", "meter", 3.80, "USD", 600, 20, 2),
+        ("SS-CABLE-3MM", "Stainless Steel Cable 3mm 7x19", "Wire",
+         "Marine-grade stainless steel cable with 7x19 construction for flexibility. Ideal for rigging and balustrades.",
+         "Stainless Steel 316", 3.0, 0.05, "550 kg", "meter", 4.50, "USD", 500, 10, 2),
+        ("SS-CABLE-5MM", "Stainless Steel Cable 5mm 7x19", "Wire",
+         "Premium stainless cable for architectural and marine applications. Excellent corrosion resistance.",
+         "Stainless Steel 316", 5.0, 0.13, "1400 kg", "meter", 7.25, "USD", 300, 10, 2),
+        ("WR-CABLE-8MM", "Wire Rope 8mm 6x19", "Wire",
+         "General purpose wire rope for lifting and hoisting. Galvanized for outdoor use.",
+         "Galvanized Steel", 8.0, 0.28, "3200 kg", "meter", 5.99, "USD", 400, 10, 3),
+        
+        # ===== STORAGE BAGS =====
+        ("NY-BAG-L", "Heavy-Duty Nylon Storage Bag Large", "Bags",
+         "Extra-large waterproof storage bag (60L capacity) with reinforced handles and YKK zippers. Perfect for equipment.",
+         "Ripstop Nylon", None, 0.45, None, "piece", 24.99, "USD", 150, 1, 1),
+        ("NY-BAG-M", "Heavy-Duty Nylon Storage Bag Medium", "Bags",
+         "Medium waterproof bag (35L capacity) with shoulder strap. Ideal for tools and gear.",
+         "Ripstop Nylon", None, 0.32, None, "piece", 18.99, "USD", 250, 1, 1),
+        ("NY-BAG-S", "Heavy-Duty Nylon Storage Bag Small", "Bags",
+         "Compact waterproof bag (15L capacity) for small tools and accessories. Includes internal pockets.",
+         "Ripstop Nylon", None, 0.18, None, "piece", 12.99, "USD", 400, 1, 1),
+        ("CV-BAG-TOOL", "Canvas Tool Bag", "Bags",
+         "Durable 16oz canvas bag with leather handles. Multiple pockets for organizing hand tools.",
+         "Heavy Canvas", None, 0.65, None, "piece", 34.99, "USD", 120, 1, 1),
+        ("CV-BAG-ROPE", "Canvas Rope Bag", "Bags",
+         "Specialized bag for storing ropes up to 100m. Features drainage grommets and shoulder strap.",
+         "Heavy Canvas", None, 0.55, None, "piece", 29.99, "USD", 80, 1, 2),
+        ("MESH-BAG-L", "Mesh Storage Bag Large", "Bags",
+         "Breathable mesh bag for drying and storing wet equipment. 50L capacity with drawstring closure.",
+         "Polyester Mesh", None, 0.15, None, "piece", 8.99, "USD", 300, 1, 1),
+        
+        # ===== SAFETY EQUIPMENT =====
+        ("SF-HARNESS-STD", "Full Body Safety Harness - Standard", "Safety",
+         "OSHA compliant full body harness with 5-point adjustment. Includes dorsal D-ring for fall arrest.",
+         "Polyester Webbing", None, 1.8, "2200 kg", "piece", 89.99, "USD", 75, 1, 2),
+        ("SF-HARNESS-PRO", "Full Body Safety Harness - Professional", "Safety",
+         "Premium harness with padding, tool loops, and quick-connect buckles. Multiple attachment points.",
+         "Polyester Webbing", None, 2.2, "2500 kg", "piece", 149.99, "USD", 40, 1, 3),
+        ("SF-HELMET-A", "Safety Helmet Class A", "Safety",
+         "ANSI Type I Class A helmet protecting against impact and electrical hazards up to 2,200V.",
+         "ABS Plastic", None, 0.35, None, "piece", 34.99, "USD", 120, 1, 1),
+        ("SF-HELMET-PRO", "Safety Helmet with Visor", "Safety",
+         "Advanced helmet with integrated clear visor and 4-point chin strap. Ventilated design.",
+         "ABS Plastic", None, 0.48, None, "piece", 54.99, "USD", 60, 1, 2),
+        ("SF-GOGGLES", "Safety Goggles Anti-Fog", "Safety",
+         "Splash and impact resistant goggles with anti-fog coating. Fits over prescription glasses.",
+         "Polycarbonate", None, 0.08, None, "piece", 14.99, "USD", 200, 1, 1),
+        ("SF-GLOVES-L", "Work Gloves Leather - Large", "Safety",
+         "Premium cowhide leather gloves with reinforced palm. Excellent grip and durability.",
+         "Cowhide Leather", None, 0.18, None, "pair", 19.99, "USD", 150, 1, 1),
+        ("SF-GLOVES-M", "Work Gloves Leather - Medium", "Safety",
+         "Premium cowhide leather gloves with reinforced palm. Excellent grip and durability.",
+         "Cowhide Leather", None, 0.16, None, "pair", 19.99, "USD", 180, 1, 1),
+        
+        # ===== HARDWARE & ACCESSORIES =====
+        ("HW-HOOK-SS-10", "Snap Hook Stainless Steel 10mm", "Hardware",
+         "Marine-grade stainless steel snap hook. Spring-loaded gate with 1000kg working load.",
+         "Stainless Steel 316", 10.0, 0.12, "1000 kg WLL", "piece", 8.99, "USD", 300, 5, 1),
+        ("HW-HOOK-SS-12", "Snap Hook Stainless Steel 12mm", "Hardware",
+         "Heavy-duty snap hook for lifting and rigging. Forged stainless with 1500kg working load.",
+         "Stainless Steel 316", 12.0, 0.18, "1500 kg WLL", "piece", 12.99, "USD", 200, 5, 1),
+        ("HW-SHACKLE-10", "D-Shackle Galvanized 10mm", "Hardware",
+         "Forged steel D-shackle with screw pin. Ideal for connecting chains, wire rope, and straps.",
+         "Galvanized Steel", 10.0, 0.15, "1000 kg WLL", "piece", 5.99, "USD", 400, 10, 1),
+        ("HW-SHACKLE-16", "D-Shackle Galvanized 16mm", "Hardware",
+         "Heavy-duty shackle for industrial rigging applications. Hot-dip galvanized for corrosion resistance.",
+         "Galvanized Steel", 16.0, 0.35, "2500 kg WLL", "piece", 11.99, "USD", 250, 10, 1),
+        ("HW-THIMBLE-10", "Wire Rope Thimble 10mm", "Hardware",
+         "Protects wire rope from wear at connection points. Stamped stainless steel construction.",
+         "Stainless Steel", 10.0, 0.03, None, "piece", 2.49, "USD", 500, 20, 1),
+        ("HW-THIMBLE-16", "Wire Rope Thimble 16mm", "Hardware",
+         "Heavy-duty thimble for larger wire ropes. Essential for eye splice protection.",
+         "Stainless Steel", 16.0, 0.06, None, "piece", 3.99, "USD", 350, 20, 1),
+        ("HW-CLAMP-8", "Wire Rope Clamp 8mm", "Hardware",
+         "U-bolt style wire rope clamp for creating secure loops. Galvanized steel construction.",
+         "Galvanized Steel", 8.0, 0.08, None, "piece", 1.99, "USD", 600, 10, 1),
+        ("HW-TURNBUCKLE", "Turnbuckle Eye-Eye 10mm", "Hardware",
+         "Adjustable turnbuckle for tensioning wire rope and cable. 12-inch take-up length.",
+         "Galvanized Steel", 10.0, 0.35, "500 kg WLL", "piece", 14.99, "USD", 150, 5, 2),
+        
+        # ===== PACKAGING =====
+        ("BX-CARD-L", "Heavy-Duty Cardboard Box Large", "Packaging",
+         "Double-wall corrugated box (24x18x18 inches). Ideal for shipping heavy items up to 30kg.",
+         "Corrugated Cardboard", None, 0.95, None, "piece", 4.99, "USD", 500, 10, 1),
+        ("BX-CARD-M", "Heavy-Duty Cardboard Box Medium", "Packaging",
+         "Double-wall corrugated box (18x14x12 inches). Suitable for medium loads up to 20kg.",
+         "Corrugated Cardboard", None, 0.65, None, "piece", 3.49, "USD", 800, 10, 1),
+        ("BX-CARD-S", "Heavy-Duty Cardboard Box Small", "Packaging",
+         "Double-wall corrugated box (12x10x8 inches). Perfect for small parts and accessories.",
+         "Corrugated Cardboard", None, 0.35, None, "piece", 2.29, "USD", 1200, 10, 1),
+        ("TAPE-PACK", "Packing Tape Heavy Duty 48mm", "Packaging",
+         "Industrial strength packing tape, 100m roll. Strong adhesive for secure box sealing.",
+         "Polypropylene", None, 0.25, None, "roll", 4.99, "USD", 400, 6, 1),
+        ("WRAP-STRETCH", "Stretch Wrap 500mm x 300m", "Packaging",
+         "Industrial stretch film for pallet wrapping. 23 micron thickness for secure loads.",
+         "LLDPE", None, 3.2, None, "roll", 18.99, "USD", 100, 1, 2),
+        ("BUBBLE-ROLL", "Bubble Wrap Roll 500mm x 50m", "Packaging",
+         "Protective bubble wrap with 10mm bubbles. Ideal for fragile item protection.",
+         "Polyethylene", None, 1.5, None, "roll", 24.99, "USD", 80, 1, 1),
+    ]
+    
+    # Insert products
+    cursor.executemany(
+        """INSERT OR REPLACE INTO products 
+        (sku, name, category, description, material, diameter_mm, weight_kg, breaking_strength, 
+         unit, unit_price, currency, quantity_on_hand, min_order_qty, lead_time_days) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        products
+    )
+    
+    conn.commit()
+    conn.close()
+    
+    print(f"✓ Catalog database created at: {CATALOG_DB_PATH}")
+    print(f"✓ Inserted {len(products)} products")
+
+
+def create_orders_database():
+    """Create and populate the orders tracking database."""
+    print("\nCreating orders database...")
+    
+    conn = sqlite3.connect(CATALOG_DB_PATH)
+    cursor = conn.cursor()
+    
+    # Drop existing tables to ensure clean schema
+    cursor.execute("DROP TABLE IF EXISTS order_items")
+    cursor.execute("DROP TABLE IF EXISTS orders")
+    cursor.execute("DROP TABLE IF EXISTS customers")
     
     # Create customers table
     cursor.execute("""
@@ -61,9 +228,9 @@ def create_catalog_database():
             email TEXT UNIQUE NOT NULL,
             phone TEXT,
             company TEXT,
-            address TEXT,
-            city TEXT,
-            country TEXT DEFAULT 'USA',
+            billing_address TEXT,
+            billing_city TEXT,
+            billing_country TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -75,13 +242,13 @@ def create_catalog_database():
             customer_id TEXT NOT NULL,
             order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             status TEXT DEFAULT 'pending',
+            tracking_number TEXT,
+            current_location TEXT,
+            estimated_delivery TEXT,
             shipping_address TEXT,
             shipping_city TEXT,
             shipping_country TEXT,
-            tracking_number TEXT,
-            current_location TEXT,
-            estimated_delivery DATE,
-            total_amount REAL DEFAULT 0,
+            total_amount REAL NOT NULL,
             currency TEXT DEFAULT 'USD',
             notes TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -95,171 +262,155 @@ def create_catalog_database():
         CREATE TABLE IF NOT EXISTS order_items (
             item_id INTEGER PRIMARY KEY AUTOINCREMENT,
             order_id TEXT NOT NULL,
-            sku TEXT NOT NULL,
+            product_sku TEXT,
             product_name TEXT NOT NULL,
             quantity INTEGER NOT NULL,
             unit_price REAL NOT NULL,
             total_price REAL NOT NULL,
             FOREIGN KEY (order_id) REFERENCES orders(order_id),
-            FOREIGN KEY (sku) REFERENCES products(sku)
+            FOREIGN KEY (product_sku) REFERENCES products(sku)
         )
     """)
     
-    # Sample product data
-    products = [
-        ("PP-ROPE-001", "Polypropylene Rope 8mm", "Ropes", 8.0, "meter", 2.50, "USD", 1500),
-        ("PP-ROPE-002", "Polypropylene Rope 12mm", "Ropes", 12.0, "meter", 3.75, "USD", 800),
-        ("PP-ROPE-003", "Polypropylene Rope 16mm", "Ropes", 16.0, "meter", 5.25, "USD", 400),
-        ("NY-BAG-001", "Nylon Storage Bag Large", "Bags", None, "piece", 15.00, "USD", 200),
-        ("NY-BAG-002", "Nylon Storage Bag Medium", "Bags", None, "piece", 12.00, "USD", 350),
-        ("NY-BAG-003", "Nylon Storage Bag Small", "Bags", None, "piece", 8.50, "USD", 500),
-        ("ST-WIRE-001", "Steel Wire 2mm", "Wire", 2.0, "meter", 1.25, "USD", 2000),
-        ("ST-WIRE-002", "Steel Wire 4mm", "Wire", 4.0, "meter", 2.10, "USD", 1200),
-        ("ST-WIRE-003", "Steel Wire 6mm", "Wire", 6.0, "meter", 3.80, "USD", 600),
-        ("SF-GEAR-001", "Safety Harness Standard", "Safety", None, "piece", 89.99, "USD", 75),
-        ("SF-GEAR-002", "Safety Helmet Class A", "Safety", None, "piece", 34.99, "USD", 120),
-        ("SF-GEAR-003", "Safety Goggles Anti-Fog", "Safety", None, "piece", 24.99, "USD", 200),
-        ("BX-CARDBOARD-001", "Cardboard Box Large", "Packaging", None, "piece", 3.50, "USD", 800),
-        ("BX-CARDBOARD-002", "Cardboard Box Medium", "Packaging", None, "piece", 2.75, "USD", 1200),
-        ("BX-CARDBOARD-003", "Cardboard Box Small", "Packaging", None, "piece", 1.95, "USD", 1500),
-    ]
-    
-    # Insert products
-    cursor.executemany(
-        "INSERT OR REPLACE INTO products (sku, name, category, diameter_mm, unit, unit_price, currency, quantity_on_hand) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        products
-    )
-    
-    # Sample customer data
+    # Sample customers
     customers = [
-        ("CUST-001", "John Smith", "john.smith@email.com", "+1-555-0101", "Smith Construction", "123 Main St", "New York", "USA"),
-        ("CUST-002", "Sarah Johnson", "sarah.j@techcorp.com", "+1-555-0102", "TechCorp Industries", "456 Oak Ave", "Los Angeles", "USA"),
-        ("CUST-003", "Michael Brown", "m.brown@builders.net", "+1-555-0103", "Brown Builders LLC", "789 Pine Rd", "Chicago", "USA"),
-        ("CUST-004", "Emily Davis", "emily.davis@marine.co", "+1-555-0104", "Marine Supplies Co", "321 Harbor Blvd", "Miami", "USA"),
-        ("CUST-005", "Robert Wilson", "rwilson@safetyfirst.com", "+1-555-0105", "Safety First Inc", "654 Safety Lane", "Houston", "USA"),
-        ("CUST-006", "Lisa Anderson", "l.anderson@warehouse.io", "+1-555-0106", "Warehouse Solutions", "987 Storage Dr", "Phoenix", "USA"),
-        ("CUST-007", "David Martinez", "david.m@constructall.com", "+1-555-0107", "ConstructAll Corp", "147 Builder Way", "Philadelphia", "USA"),
-        ("CUST-008", "Jennifer Taylor", "jtaylor@industrial.net", "+1-555-0108", "Industrial Supplies Ltd", "258 Factory Rd", "San Antonio", "USA"),
+        ("CUST-001", "John Smith", "john.smith@email.com", "+1-555-0101", 
+         "ABC Construction Co.", "123 Builder Lane", "New York", "USA"),
+        ("CUST-002", "Sarah Johnson", "sarah.j@techcorp.com", "+1-555-0102",
+         "TechCorp Industries", "456 Innovation Ave", "San Francisco", "USA"),
+        ("CUST-003", "Michael Brown", "m.brown@marinesupply.com", "+1-555-0103",
+         "Marine Supply LLC", "789 Harbor Road", "Miami", "USA"),
+        ("CUST-004", "Emily Davis", "emily.davis@warehouse.net", "+1-555-0104",
+         "Davis Warehouse Solutions", "321 Storage Blvd", "Chicago", "USA"),
+        ("CUST-005", "Robert Wilson", "rwilson@industrialco.com", "+1-555-0105",
+         "Industrial Co.", "555 Factory Way", "Houston", "USA"),
     ]
     
-    cursor.executemany(
-        "INSERT OR REPLACE INTO customers (customer_id, name, email, phone, company, address, city, country) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        customers
-    )
+    cursor.executemany("""
+        INSERT OR REPLACE INTO customers 
+        (customer_id, name, email, phone, company, billing_address, billing_city, billing_country)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, customers)
     
-    # Generate sample orders with various statuses
-    order_statuses = ['pending', 'confirmed', 'processing', 'shipped', 'in_transit', 'out_for_delivery', 'delivered', 'cancelled']
-    locations = [
-        "Warehouse - New York",
-        "Distribution Center - Chicago", 
-        "Transit Hub - Dallas",
-        "Local Facility - Los Angeles",
-        "Out for Delivery - Local Area",
-        "Delivered"
+    # Sample orders with various statuses
+    orders = [
+        # John Smith's orders
+        ("ORD-2024-0001", "CUST-001", "2024-11-15 09:30:00", "delivered", "TRK-US-001234",
+         "Delivered", "2024-11-20", "123 Builder Lane", "New York", "USA", 156.75, "USD", None),
+        ("ORD-2024-0015", "CUST-001", "2024-11-28 14:22:00", "in_transit", "TRK-US-005678",
+         "Distribution Center - Newark, NJ", "2024-12-03", "123 Builder Lane", "New York", "USA", 289.50, "USD", None),
+        ("ORD-2024-0022", "CUST-001", "2024-12-01 08:15:00", "confirmed", None,
+         "Warehouse - Processing", "2024-12-06", "123 Builder Lane", "New York", "USA", 445.00, "USD", "Rush order"),
+        
+        # Sarah Johnson's orders
+        ("ORD-2024-0008", "CUST-002", "2024-11-20 11:45:00", "delivered", "TRK-US-002345",
+         "Delivered", "2024-11-25", "456 Innovation Ave", "San Francisco", "USA", 523.96, "USD", None),
+        ("ORD-2024-0019", "CUST-002", "2024-11-29 16:30:00", "shipped", "TRK-US-006789",
+         "In Transit - Phoenix Hub", "2024-12-04", "456 Innovation Ave", "San Francisco", "USA", 178.45, "USD", None),
+        
+        # Michael Brown's orders
+        ("ORD-2024-0003", "CUST-003", "2024-11-17 10:00:00", "delivered", "TRK-US-003456",
+         "Delivered", "2024-11-22", "789 Harbor Road", "Miami", "USA", 892.50, "USD", None),
+        ("ORD-2024-0012", "CUST-003", "2024-11-25 09:15:00", "out_for_delivery", "TRK-US-004567",
+         "Out for Delivery - Miami", "2024-12-01", "789 Harbor Road", "Miami", "USA", 367.80, "USD", None),
+        
+        # Emily Davis's orders
+        ("ORD-2024-0006", "CUST-004", "2024-11-19 13:20:00", "delivered", "TRK-US-007890",
+         "Delivered", "2024-11-24", "321 Storage Blvd", "Chicago", "USA", 1245.00, "USD", None),
+        ("ORD-2024-0021", "CUST-004", "2024-11-30 10:45:00", "processing", None,
+         "Warehouse - Packing", "2024-12-05", "321 Storage Blvd", "Chicago", "USA", 567.25, "USD", None),
+        
+        # Robert Wilson's orders  
+        ("ORD-2024-0010", "CUST-005", "2024-11-22 15:00:00", "delivered", "TRK-US-008901",
+         "Delivered", "2024-11-27", "555 Factory Way", "Houston", "USA", 2150.00, "USD", None),
+        ("ORD-2024-0016", "CUST-005", "2024-11-28 08:30:00", "cancelled", None,
+         "Cancelled", None, "555 Factory Way", "Houston", "USA", 450.00, "USD", "Customer requested cancellation"),
+        ("ORD-2024-0023", "CUST-005", "2024-12-01 11:00:00", "pending", None,
+         "Awaiting Payment Confirmation", "2024-12-08", "555 Factory Way", "Houston", "USA", 789.99, "USD", None),
     ]
     
-    orders = []
-    order_items_data = []
+    cursor.executemany("""
+        INSERT OR REPLACE INTO orders 
+        (order_id, customer_id, order_date, status, tracking_number, current_location,
+         estimated_delivery, shipping_address, shipping_city, shipping_country, 
+         total_amount, currency, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, orders)
     
-    # Create orders for each customer
-    base_date = datetime.now()
-    order_counter = 1
-    
-    for customer in customers:
-        customer_id = customer[0]
-        customer_city = customer[6]
+    # Order items
+    order_items = [
+        # ORD-2024-0001 (John Smith - delivered)
+        ("ORD-2024-0001", "PP-ROPE-12MM", "Polypropylene Rope 12mm", 25, 3.75, 93.75),
+        ("ORD-2024-0001", "HW-SHACKLE-10", "D-Shackle Galvanized 10mm", 10, 5.99, 59.90),
+        ("ORD-2024-0001", "HW-THIMBLE-10", "Wire Rope Thimble 10mm", 5, 2.49, 12.45),
         
-        # Each customer gets 2-4 orders
-        num_orders = random.randint(2, 4)
+        # ORD-2024-0015 (John Smith - in transit)
+        ("ORD-2024-0015", "NY-ROPE-14MM", "Nylon Rope 14mm", 30, 7.50, 225.00),
+        ("ORD-2024-0015", "HW-HOOK-SS-10", "Snap Hook Stainless Steel 10mm", 6, 8.99, 53.94),
+        ("ORD-2024-0015", "HW-THIMBLE-10", "Wire Rope Thimble 10mm", 4, 2.49, 9.96),
         
-        for i in range(num_orders):
-            order_id = f"ORD-2024-{order_counter:04d}"
-            order_date = base_date - timedelta(days=random.randint(1, 90))
-            
-            # Determine status based on order age
-            days_ago = (base_date - order_date).days
-            if days_ago > 30:
-                status = 'delivered'
-                current_location = 'Delivered'
-                est_delivery = order_date + timedelta(days=random.randint(3, 7))
-            elif days_ago > 14:
-                status = random.choice(['delivered', 'delivered', 'in_transit'])
-                current_location = 'Delivered' if status == 'delivered' else random.choice(locations[:-1])
-                est_delivery = order_date + timedelta(days=random.randint(5, 10))
-            elif days_ago > 7:
-                status = random.choice(['shipped', 'in_transit', 'out_for_delivery'])
-                current_location = random.choice(locations[1:5])
-                est_delivery = base_date + timedelta(days=random.randint(1, 3))
-            elif days_ago > 3:
-                status = random.choice(['processing', 'shipped'])
-                current_location = random.choice(locations[:3])
-                est_delivery = base_date + timedelta(days=random.randint(2, 5))
-            else:
-                status = random.choice(['pending', 'confirmed', 'processing'])
-                current_location = locations[0]
-                est_delivery = base_date + timedelta(days=random.randint(5, 10))
-            
-            tracking_number = f"TRK{random.randint(100000000, 999999999)}" if status not in ['pending', 'confirmed'] else None
-            
-            # Select random products for this order
-            num_items = random.randint(1, 4)
-            selected_products = random.sample(products, num_items)
-            total_amount = 0
-            
-            for product in selected_products:
-                sku = product[0]
-                product_name = product[1]
-                unit_price = product[5]
-                quantity = random.randint(5, 50)
-                item_total = round(unit_price * quantity, 2)
-                total_amount += item_total
-                
-                order_items_data.append((order_id, sku, product_name, quantity, unit_price, item_total))
-            
-            orders.append((
-                order_id,
-                customer_id,
-                order_date.strftime("%Y-%m-%d %H:%M:%S"),
-                status,
-                customer[5],  # shipping address
-                customer_city,
-                customer[7],  # country
-                tracking_number,
-                current_location,
-                est_delivery.strftime("%Y-%m-%d"),
-                round(total_amount, 2),
-                "USD",
-                None
-            ))
-            
-            order_counter += 1
+        # ORD-2024-0022 (John Smith - confirmed)
+        ("ORD-2024-0022", "SF-HARNESS-PRO", "Full Body Safety Harness - Professional", 2, 149.99, 299.98),
+        ("ORD-2024-0022", "SF-HELMET-PRO", "Safety Helmet with Visor", 2, 54.99, 109.98),
+        ("ORD-2024-0022", "SF-GLOVES-L", "Work Gloves Leather - Large", 2, 19.99, 39.98),
+        
+        # ORD-2024-0008 (Sarah Johnson - delivered)
+        ("ORD-2024-0008", "SS-CABLE-5MM", "Stainless Steel Cable 5mm 7x19", 50, 7.25, 362.50),
+        ("ORD-2024-0008", "HW-TURNBUCKLE", "Turnbuckle Eye-Eye 10mm", 8, 14.99, 119.92),
+        ("ORD-2024-0008", "HW-THIMBLE-16", "Wire Rope Thimble 16mm", 10, 3.99, 39.90),
+        
+        # ORD-2024-0019 (Sarah Johnson - shipped)
+        ("ORD-2024-0019", "NY-BAG-M", "Heavy-Duty Nylon Storage Bag Medium", 5, 18.99, 94.95),
+        ("ORD-2024-0019", "CV-BAG-TOOL", "Canvas Tool Bag", 2, 34.99, 69.98),
+        ("ORD-2024-0019", "SF-GOGGLES", "Safety Goggles Anti-Fog", 9, 14.99, 134.91),
+        
+        # ORD-2024-0003 (Michael Brown - delivered)
+        ("ORD-2024-0003", "NY-ROPE-20MM", "Nylon Rope 20mm", 50, 12.99, 649.50),
+        ("ORD-2024-0003", "SS-CABLE-3MM", "Stainless Steel Cable 3mm 7x19", 40, 4.50, 180.00),
+        ("ORD-2024-0003", "HW-SHACKLE-16", "D-Shackle Galvanized 16mm", 5, 11.99, 59.95),
+        
+        # ORD-2024-0012 (Michael Brown - out for delivery)
+        ("ORD-2024-0012", "MN-ROPE-12MM", "Manila Rope 12mm", 80, 3.25, 260.00),
+        ("ORD-2024-0012", "CV-BAG-ROPE", "Canvas Rope Bag", 3, 29.99, 89.97),
+        ("ORD-2024-0012", "HW-CLAMP-8", "Wire Rope Clamp 8mm", 9, 1.99, 17.91),
+        
+        # ORD-2024-0006 (Emily Davis - delivered)
+        ("ORD-2024-0006", "BX-CARD-L", "Heavy-Duty Cardboard Box Large", 100, 4.99, 499.00),
+        ("ORD-2024-0006", "BX-CARD-M", "Heavy-Duty Cardboard Box Medium", 150, 3.49, 523.50),
+        ("ORD-2024-0006", "TAPE-PACK", "Packing Tape Heavy Duty 48mm", 24, 4.99, 119.76),
+        ("ORD-2024-0006", "WRAP-STRETCH", "Stretch Wrap 500mm x 300m", 5, 18.99, 94.95),
+        
+        # ORD-2024-0021 (Emily Davis - processing)
+        ("ORD-2024-0021", "BUBBLE-ROLL", "Bubble Wrap Roll 500mm x 50m", 10, 24.99, 249.90),
+        ("ORD-2024-0021", "BX-CARD-S", "Heavy-Duty Cardboard Box Small", 100, 2.29, 229.00),
+        ("ORD-2024-0021", "TAPE-PACK", "Packing Tape Heavy Duty 48mm", 18, 4.99, 89.82),
+        
+        # ORD-2024-0010 (Robert Wilson - delivered)
+        ("ORD-2024-0010", "WR-CABLE-8MM", "Wire Rope 8mm 6x19", 200, 5.99, 1198.00),
+        ("ORD-2024-0010", "HW-HOOK-SS-12", "Snap Hook Stainless Steel 12mm", 50, 12.99, 649.50),
+        ("ORD-2024-0010", "HW-SHACKLE-16", "D-Shackle Galvanized 16mm", 25, 11.99, 299.75),
+        
+        # ORD-2024-0016 (Robert Wilson - cancelled)
+        ("ORD-2024-0016", "SF-HARNESS-STD", "Full Body Safety Harness - Standard", 5, 89.99, 449.95),
+        
+        # ORD-2024-0023 (Robert Wilson - pending)
+        ("ORD-2024-0023", "ST-WIRE-6MM", "Galvanized Steel Wire 6mm", 150, 3.80, 570.00),
+        ("ORD-2024-0023", "HW-THIMBLE-16", "Wire Rope Thimble 16mm", 30, 3.99, 119.70),
+        ("ORD-2024-0023", "HW-CLAMP-8", "Wire Rope Clamp 8mm", 50, 1.99, 99.50),
+    ]
     
-    # Insert orders
-    cursor.executemany(
-        """INSERT INTO orders 
-           (order_id, customer_id, order_date, status, shipping_address, shipping_city, 
-            shipping_country, tracking_number, current_location, estimated_delivery, 
-            total_amount, currency, notes) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        orders
-    )
-    
-    # Insert order items
-    cursor.executemany(
-        """INSERT INTO order_items 
-           (order_id, sku, product_name, quantity, unit_price, total_price) 
-           VALUES (?, ?, ?, ?, ?, ?)""",
-        order_items_data
-    )
+    cursor.executemany("""
+        INSERT INTO order_items 
+        (order_id, product_sku, product_name, quantity, unit_price, total_price)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, order_items)
     
     conn.commit()
     conn.close()
     
-    print(f"✓ Catalog database created at: {CATALOG_DB_PATH}")
-    print(f"✓ Inserted {len(products)} sample products")
-    print(f"✓ Inserted {len(customers)} sample customers")
-    print(f"✓ Inserted {len(orders)} sample orders")
-    print(f"✓ Inserted {len(order_items_data)} order items")
+    print(f"✓ Created customers table with {len(customers)} customers")
+    print(f"✓ Created orders table with {len(orders)} orders")
+    print(f"✓ Created order_items table with {len(order_items)} line items")
 
 
 def create_directories():
@@ -269,7 +420,6 @@ def create_directories():
     directories = [
         DATABASE_DIR,
         INVOICES_DIR,
-        UPLOADS_DIR,
         os.path.join(os.path.dirname(DATABASE_DIR), "templates"),
     ]
     
@@ -294,42 +444,21 @@ def verify_setup():
             print("✗ Products table not found")
             return False
         
-        # Check customers table exists
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='customers'")
-        if cursor.fetchone():
-            print("✓ Customers table exists")
-        else:
-            print("✗ Customers table not found")
-            return False
-        
-        # Check orders table exists
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='orders'")
-        if cursor.fetchone():
-            print("✓ Orders table exists")
-        else:
-            print("✗ Orders table not found")
-            return False
-        
-        # Check order_items table exists
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='order_items'")
-        if cursor.fetchone():
-            print("✓ Order_items table exists")
-        else:
-            print("✗ Order_items table not found")
-            return False
-        
-        # Check data counts
+        # Check products data
         cursor.execute("SELECT COUNT(*) FROM products")
-        product_count = cursor.fetchone()[0]
-        print(f"✓ Found {product_count} products in database")
+        count = cursor.fetchone()[0]
+        print(f"✓ Found {count} products in database")
         
-        cursor.execute("SELECT COUNT(*) FROM customers")
-        customer_count = cursor.fetchone()[0]
-        print(f"✓ Found {customer_count} customers in database")
-        
-        cursor.execute("SELECT COUNT(*) FROM orders")
-        order_count = cursor.fetchone()[0]
-        print(f"✓ Found {order_count} orders in database")
+        # Check orders tables
+        for table in ['customers', 'orders', 'order_items']:
+            cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table}'")
+            if cursor.fetchone():
+                cursor.execute(f"SELECT COUNT(*) FROM {table}")
+                count = cursor.fetchone()[0]
+                print(f"✓ {table.title()} table exists ({count} records)")
+            else:
+                print(f"✗ {table.title()} table not found")
+                return False
         
         # Show sample products
         cursor.execute("SELECT sku, name, category, unit_price FROM products LIMIT 3")
@@ -338,21 +467,16 @@ def verify_setup():
             print(f"  {row[0]}: {row[1]} ({row[2]}) - ${row[3]:.2f}")
         
         # Show sample customers
-        cursor.execute("SELECT customer_id, name, email, company FROM customers LIMIT 3")
+        cursor.execute("SELECT name, email, company FROM customers LIMIT 3")
         print("\nSample customers:")
         for row in cursor.fetchall():
-            print(f"  {row[0]}: {row[1]} ({row[2]}) - {row[3]}")
+            print(f"  {row[0]} ({row[1]}) - {row[2]}")
         
         # Show sample orders
-        cursor.execute("""
-            SELECT o.order_id, c.name, o.status, o.total_amount 
-            FROM orders o 
-            JOIN customers c ON o.customer_id = c.customer_id 
-            LIMIT 3
-        """)
+        cursor.execute("SELECT order_id, status, total_amount FROM orders LIMIT 3")
         print("\nSample orders:")
         for row in cursor.fetchall():
-            print(f"  {row[0]}: {row[1]} - {row[2]} - ${row[3]:.2f}")
+            print(f"  {row[0]}: {row[1]} - ${row[2]:.2f}")
         
         conn.close()
         return True
@@ -369,14 +493,14 @@ def main():
     try:
         create_directories()
         create_catalog_database()
+        create_orders_database()
         
         if verify_setup():
             print("\n🎉 Database initialization completed successfully!")
             print("\nNext steps:")
             print("1. Copy .env.example to .env and add your API keys")
             print("2. Install dependencies: pip install -r requirements.txt")
-            print("3. Start the MCP server: python mcp/server.py")
-            print("4. Start the FastAPI server: python api/main.py")
+            print("3. Start the FastAPI server: python api.py")
         else:
             print("\n❌ Database initialization failed!")
             sys.exit(1)

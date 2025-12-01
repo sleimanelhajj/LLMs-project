@@ -216,10 +216,10 @@ class ReportAgent(BaseAgent):
                         SUM(oi.total_price) as total_revenue
                     FROM order_items oi
                     JOIN orders o ON oi.order_id = o.order_id
-                    JOIN products p ON oi.sku = p.sku
+                    JOIN products p ON oi.product_sku = p.sku
                     WHERE o.order_date >= ?
                     {category_filter}
-                    GROUP BY oi.sku
+                    GROUP BY oi.product_sku
                     ORDER BY total_revenue DESC
                     LIMIT 5
                 """, params)
@@ -234,7 +234,7 @@ class ReportAgent(BaseAgent):
                         SUM(oi.quantity) as total_units
                     FROM order_items oi
                     JOIN orders o ON oi.order_id = o.order_id
-                    JOIN products p ON oi.sku = p.sku
+                    JOIN products p ON oi.product_sku = p.sku
                     WHERE o.order_date >= ?
                     GROUP BY p.category
                     ORDER BY category_revenue DESC
