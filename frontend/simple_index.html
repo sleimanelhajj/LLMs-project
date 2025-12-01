@@ -167,6 +167,61 @@
             background: #e5e7eb;
         }
 
+        /* Tools Used Dropdown */
+        .tools-used {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+
+        .tools-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            color: var(--text-secondary);
+            user-select: none;
+        }
+
+        .tools-toggle:hover {
+            color: var(--primary);
+        }
+
+        .tools-toggle-icon {
+            transition: transform 0.2s;
+            font-size: 10px;
+        }
+
+        .tools-toggle-icon.expanded {
+            transform: rotate(90deg);
+        }
+
+        .tools-list {
+            display: none;
+            margin-top: 8px;
+            padding: 8px;
+            background: #f9fafb;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
+        .tools-list.show {
+            display: block;
+        }
+
+        .tool-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 0;
+            color: var(--text);
+        }
+
+        .tool-icon {
+            color: var(--primary);
+        }
+
         /* Typing indicator */
         .typing {
             display: flex;
@@ -386,14 +441,17 @@
                 const data = await response.json();
                 hideTyping();
 
+                console.log('📊 Response data:', data);
+                console.log('🔧 Tools used:', data.metadata?.tools_used);
+
                 if (data.success) {
-                    addMessage(data.response, 'bot');
+                    addMessage(data.response, 'bot', data.metadata?.tools_used || []);
                 } else {
-                    addMessage('Sorry, something went wrong. Please try again.', 'bot');
+                    addMessage('Sorry, something went wrong. Please try again.', 'bot', []);
                 }
             } catch (error) {
                 hideTyping();
-                addMessage('Connection error. Please check your connection.', 'bot');
+                addMessage('Connection error. Please check your connection.', 'bot', []);
                 console.error(error);
             }
 
@@ -410,7 +468,9 @@
         }
 
         // Add message to chat
-        function addMessage(text, type) {
+        function addMessage(text, type, toolsUsed = []) {
+            console.log('📝 addMessage called:', { type, toolsUsed });
+            
             const container = document.getElementById('chat-container');
             const div = document.createElement('div');
             div.className = `message ${type}`;
@@ -436,9 +496,58 @@
                 }
             }
             
-            div.innerHTML = `<div class="content">${html}</div>`;
+            let contentHtml = `<div class="content">${html}</div>`;
+            
+            // Add tools used dropdown for bot messages if tools were used
+            if (type === 'bot' && toolsUsed && toolsUsed.length > 0) {
+                console.log('✅ Adding tools dropdown with tools:', toolsUsed);
+                const toolsId = 'tools_' + Date.now() + Math.random();
+                contentHtml += `
+                    <div class="tools-used">
+                        <div class="tools-toggle" onclick="toggleTools('${toolsId}')">
+                            <span class="tools-toggle-icon" id="${toolsId}_icon">▶</span>
+                            <span>Tools used (${toolsUsed.length})</span>
+                        </div>
+                        <div class="tools-list" id="${toolsId}">
+                            ${toolsUsed.map(tool => `
+                                <div class="tool-item">
+                                    <span class="tool-icon">🔧</span>
+                                    <span>${formatToolName(tool)}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            } else {
+                console.log('❌ Not adding tools dropdown:', { type, toolsUsed, length: toolsUsed?.length });
+            }
+            
+            div.innerHTML = contentHtml;
             container.appendChild(div);
             container.scrollTop = container.scrollHeight;
+        }
+
+        // Toggle tools dropdown
+        function toggleTools(id) {
+            const toolsList = document.getElementById(id);
+            const icon = document.getElementById(id + '_icon');
+            
+            if (toolsList.classList.contains('show')) {
+                toolsList.classList.remove('show');
+                icon.classList.remove('expanded');
+            } else {
+                toolsList.classList.add('show');
+                icon.classList.add('expanded');
+            }
+        }
+
+        // Format tool name for display
+        function formatToolName(tool) {
+            // Convert snake_case to Title Case
+            return tool
+                .split('_')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ');
         }
 
         // Typing indicator
