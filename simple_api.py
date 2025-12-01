@@ -138,6 +138,23 @@ async def chat(request: ChatRequest):
         last_msg = result_messages[-1]
         response_text = last_msg.content
 
+        # Extract tool usage information from the messages
+        tools_used = []
+        for msg in result_messages:
+            # Check if message has tool calls
+            if hasattr(msg, 'additional_kwargs') and 'tool_calls' in msg.additional_kwargs:
+                for tool_call in msg.additional_kwargs['tool_calls']:
+                    if 'function' in tool_call and 'name' in tool_call['function']:
+                        tool_name = tool_call['function']['name']
+                        if tool_name not in tools_used:
+                            tools_used.append(tool_name)
+            # Also check for ToolMessage (response from tools)
+            elif hasattr(msg, 'name') and msg.name and msg.name not in tools_used:
+                tools_used.append(msg.name)
+
+        # Debug logging
+        print(f"🔧 Tools used: {tools_used}")
+
         # Save to session history
         sessions[session_id].append({"role": "user", "content": request.message})
         sessions[session_id].append({"role": "assistant", "content": response_text})
@@ -150,7 +167,7 @@ async def chat(request: ChatRequest):
             response=response_text,
             success=True,
             agent_name="EmployeeAssistant",
-            metadata={"session_id": session_id},
+            metadata={"session_id": session_id, "tools_used": tools_used},
         )
 
     except Exception as e:
