@@ -122,6 +122,51 @@
             font-size: 13px;
         }
 
+        /* Data Tables */
+        .message.bot table,
+        .message.bot .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+            font-size: 14px;
+            background: #fafafa;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .message.bot table th,
+        .message.bot .data-table th {
+            background: var(--primary);
+            color: white;
+            font-weight: 600;
+            padding: 10px 12px;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        .message.bot table td,
+        .message.bot .data-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+
+        .message.bot table tr:last-child td,
+        .message.bot .data-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .message.bot table tbody tr:nth-child(even),
+        .message.bot .data-table tr:nth-child(even) {
+            background: #f3f4f6;
+        }
+
+        .message.bot table tr:hover,
+        .message.bot .data-table tr:hover {
+            background: #e5e7eb;
+        }
+
         /* Typing indicator */
         .typing {
             display: flex;
@@ -370,11 +415,26 @@
             const div = document.createElement('div');
             div.className = `message ${type}`;
             
-            // Simple markdown-like parsing
-            let html = text
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/`(.*?)`/g, '<code>$1</code>')
-                .replace(/\n/g, '<br>');
+            let html = text;
+            
+            // Check if content contains HTML table
+            const hasTable = /<table[^>]*>/i.test(text);
+            
+            if (hasTable) {
+                // Content has HTML tables - remove all newlines to prevent breaking
+                html = html.replace(/\n/g, '');
+            } else {
+                // Check for other HTML tags
+                const hasHtmlTags = /<(strong|br|ul|li|ol|div|span|em)[^>]*>/i.test(text);
+                
+                if (!hasHtmlTags) {
+                    // Plain text or markdown - apply formatting
+                    html = html
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                        .replace(/`(.*?)`/g, '<code>$1</code>')
+                        .replace(/\n/g, '<br>');
+                }
+            }
             
             div.innerHTML = `<div class="content">${html}</div>`;
             container.appendChild(div);

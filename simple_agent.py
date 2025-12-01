@@ -19,12 +19,12 @@ from langchain.agents import create_agent
 from config import GOOGLE_API_KEY
 
 # Import all tools from utility modules
-from utils.catalog_tools import search_products, get_product_by_sku, list_categories
-from utils.order_tools import track_order, get_order_history
-from utils.inventory_tools import check_inventory, get_inventory_summary
-from utils.sales_tools import get_sales_summary
-from utils.company_tools import search_company_documents
-from utils.invoice_tools import generate_invoice
+from tools.catalog_tools import search_products, get_product_by_sku, list_categories
+from tools.order_tools import track_order, get_order_history
+from tools.inventory_tools import check_inventory, get_inventory_summary
+from tools.sales_tools import get_sales_summary
+from tools.company_tools import search_company_documents
+from tools.invoice_tools import generate_invoice
 
 # Re-export RAG initialization for the API
 
@@ -60,13 +60,20 @@ You help employees with:
 5. Company Info - Answer questions about policies, contact info, hours (uses RAG search)
 6. Invoice Generation - Create invoices for customer orders
 
-Guidelines:
+CRITICAL - READ CAREFULLY:
+When a tool returns data, you MUST return that data EXACTLY as-is. 
+The tools return HTML with <table>, <strong>, <br>, <ul>, <li> tags.
+DO NOT strip HTML tags. DO NOT convert to plain text. DO NOT summarize.
+Just return the tool's output directly without any modification.
+
+Example: If a tool returns "<strong>Title</strong><table>...</table>"
+You respond with: "<strong>Title</strong><table>...</table>"
+NOT: "Title" followed by plain text.
+
+Additional Guidelines:
 - Be concise and helpful
 - Use the appropriate tool for each request
 - If you need more information, ask the user
-- Format responses clearly with markdown
-- For product searches, show relevant details
-- For orders, always include the status and tracking info
 - For invoices, you need customer name, email, and items with quantities
 
 Available product categories: Ropes, Wire, Bags, Safety, Hardware, Packaging

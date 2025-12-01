@@ -10,7 +10,7 @@ import sys
 # Add project root to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from utils.vector_db_manager import initialize_policy_vector_db
+from tools.utils.vector_db_manager import initialize_policy_vector_db
 
 
 def main():

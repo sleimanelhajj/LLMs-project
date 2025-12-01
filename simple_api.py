@@ -15,7 +15,7 @@ import os
 from langchain_core.messages import HumanMessage, AIMessage
 
 from simple_agent import create_employee_assistant
-from utils.rag_utils import initialize_company_vector_db
+from tools.utils.rag_utils import initialize_company_vector_db
 
 # =============================================================================
 # FastAPI App

@@ -23,6 +23,7 @@ python-multipart>=0.0.6
 # PDF and Chart Generation
 reportlab>=3.6.12
 matplotlib>=3.7.0
+
 # Configuration and Data
 pyyaml>=6.0
 pydantic>=2.0.0
