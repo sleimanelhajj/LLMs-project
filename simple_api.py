@@ -1,7 +1,7 @@
 """
 Simple FastAPI server for the Employee Assistant Agent.
 
-This is a streamlined version using a single ReAct agent with multiple tools.
+This is a streamlined version using a single agent with multiple tools.
 """
 
 from fastapi import FastAPI, HTTPException
@@ -11,6 +11,8 @@ from pydantic import BaseModel
 from typing import Optional, List
 import uvicorn
 import os
+
+from langchain_core.messages import HumanMessage, AIMessage
 
 from simple_agent import create_employee_assistant
 from utils.rag_utils import initialize_company_vector_db
@@ -39,6 +41,7 @@ app.add_middleware(
 agent = None
 
 # Session history storage (in-memory for simplicity)
+# Each session: list of {"role": "user"|"assistant", "content": str}
 sessions = {}
 
 
@@ -47,12 +50,12 @@ async def startup():
     """Initialize the agent and RAG vector database on startup."""
     global agent
     print("🚀 Starting Employee Assistant...")
-    
+
     # Initialize RAG vector database for company documents
     print("📚 Initializing RAG vector database...")
     initialize_company_vector_db()
     print("✅ RAG initialized!")
-    
+
     # Create the agent
     agent = create_employee_assistant()
     print("✅ Agent ready!")
@@ -71,7 +74,7 @@ class Message(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
-    history: Optional[List[Message]] = None
+    history: Optional[List[Message]] = None  # kept for compatibility, currently unused
 
 
 class ChatResponse(BaseModel):
@@ -115,23 +118,25 @@ async def chat(request: ChatRequest):
         if session_id not in sessions:
             sessions[session_id] = []
 
-        # Build context from recent history
-        context = ""
-        for msg in sessions[session_id][-6:]:  # Last 6 messages (3 exchanges)
-            role = "User" if msg["role"] == "user" else "Assistant"
-            context += f"{role}: {msg['content']}\n"
-        
-        # Combine context with current message
-        if context:
-            full_input = f"Previous conversation:\n{context}\nCurrent question: {request.message}"
-        else:
-            full_input = request.message
+        # Build LangChain messages from session history
+        lc_messages = []
+        for msg in sessions[session_id]:
+            if msg["role"] == "user":
+                lc_messages.append(HumanMessage(content=msg["content"]))
+            else:
+                lc_messages.append(AIMessage(content=msg["content"]))
 
-        # Invoke the agent (AgentExecutor uses "input" key)
-        result = agent.invoke({"input": full_input})
+        # Add the current user message
+        lc_messages.append(HumanMessage(content=request.message))
 
-        # Extract response from result
-        response_text = result.get("output", "I couldn't process your request. Please try again.")
+        # Invoke the agent graph
+        # Use "messages" key (required by create_agent agents)
+        result = await agent.ainvoke({"messages": lc_messages})
+
+        # The agent returns state with a "messages" list
+        result_messages = result["messages"]
+        last_msg = result_messages[-1]
+        response_text = last_msg.content
 
         # Save to session history
         sessions[session_id].append({"role": "user", "content": request.message})
