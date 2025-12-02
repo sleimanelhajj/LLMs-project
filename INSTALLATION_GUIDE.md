@@ -215,7 +215,7 @@ You should see:
 The simple API runs a single-agent system with all tools:
 
 ```bash
-python simple_api.py
+python api.py
 ```
 
 You should see output like:
@@ -232,7 +232,7 @@ INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 For development with automatic reloading on code changes:
 
 ```bash
-uvicorn simple_api:app --host 0.0.0.0 --port 8000 --reload
+uvicorn api:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 ### Expected Startup Process
@@ -334,8 +334,8 @@ Expected response:
 
 ```
 LLMs project/
-├── simple_api.py              # Main FastAPI application
-├── simple_agent.py            # Agent configuration
+├── api.py              # Main FastAPI application
+├── agent.py            # Agent configuration
 ├── config.py                  # Configuration and settings
 ├── requirements.txt           # Python dependencies
 ├── .env                       # Environment variables (API keys)
@@ -366,7 +366,7 @@ LLMs project/
 │   └── init_policy_db.py     # Initialize vector database
 │
 └── frontend/                  # Web interface
-    └── simple_index.html     # Chat UI
+    └── index.html     # Chat UI
 ```
 
 ---
@@ -401,7 +401,7 @@ python scripts/init_databases.py
 **Solution**:
 ```bash
 # Use a different port
-uvicorn simple_api:app --host 0.0.0.0 --port 8080
+uvicorn api:app --host 0.0.0.0 --port 8080
 # Then access at http://localhost:8080
 ```
 
@@ -502,7 +502,7 @@ echo "GOOGLE_API_KEY=your_key_here" > .env
 python scripts/init_databases.py
 
 # 4. Run the application
-python simple_api.py
+python api.py
 
 # 5. Open browser
 # Navigate to http://localhost:8000
