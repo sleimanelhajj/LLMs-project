@@ -1,6 +1,5 @@
 import os
-import shutil
-from typing import List, Dict, Any, Optional
+from typing import List, Optional
 from pathlib import Path
 
 from langchain_community.document_loaders import TextLoader, PyPDFLoader
@@ -14,8 +13,6 @@ from config import (
     CHUNK_OVERLAP,
     EMBEDDING_MODEL,
     VECTOR_DB_PATH,
-    RETRIEVAL_K,
-    MIN_SCORE,
 )
 
 
@@ -99,65 +96,3 @@ class VectorDBManager:
 
         chunks = text_splitter.split_documents(all_documents)
         return chunks
-
-    def similarity_search(
-        self, query: str, k: int = RETRIEVAL_K, min_score: float = MIN_SCORE
-    ) -> List[Dict[str, Any]]:
-        if self.vector_store is None:
-            return []
-        try:
-            results = self.vector_store.similarity_search_with_score(query, k=k)
-
-            filtered_results = []
-            for doc, score in results:
-                similarity = 1 / (1 + score)
-
-                if similarity >= min_score:
-                    filtered_results.append(
-                        {
-                            "content": doc.page_content,
-                            "metadata": doc.metadata,
-                            "score": round(similarity, 3),
-                        }
-                    )
-            return filtered_results
-
-        except Exception as e:
-            print(f"Error during search: {e}")
-            return []
-
-
-# function to initialize policy vector database
-def initialize_policy_vector_db(
-    policy_docs_dir: str = "data/documents",
-) -> VectorDBManager:
-    manager = VectorDBManager()
-
-    if manager.vector_store is not None:
-        print("Policy vector database already initialized")
-        return manager
-
-    policy_files = []
-    if os.path.exists(policy_docs_dir):
-        for file in os.listdir(policy_docs_dir):
-            if file.endswith((".txt", ".pdf", ".md")):
-                policy_files.append(os.path.join(policy_docs_dir, file))
-
-    if not policy_files:
-        print(f"No policy documents found in {policy_docs_dir}")
-        print(
-            "Please add policy documents (.txt, .pdf, .md) to the documents directory"
-        )
-        return manager
-
-    print(f"Found {len(policy_files)} policy document(s)")
-
-    chunks = manager.load_and_chunk_documents(policy_files)
-
-    if chunks:
-        manager.vector_store = manager.create_vector_store_from_documents(chunks)
-        print("Policy vector database initialized successfully")
-    else:
-        print("Failed to create vector database - no chunks generated")
-
-    return manager

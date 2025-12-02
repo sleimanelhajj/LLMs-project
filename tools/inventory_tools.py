@@ -1,6 +1,5 @@
 """
 Inventory Tools
-
 Tools for checking inventory levels and getting inventory summaries.
 """
 
