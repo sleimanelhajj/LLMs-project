@@ -1,6 +1,5 @@
 """
 Invoice Generation Tools
-
 Tools for generating PDF invoices.
 """
 

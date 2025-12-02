@@ -1,6 +1,5 @@
 """
 Sales Report Tools
-
 Tools for generating sales summaries and reports.
 """
 

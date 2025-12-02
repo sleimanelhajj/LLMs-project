@@ -1,9 +1,3 @@
-"""
-Simple FastAPI server for the Employee Assistant Agent.
-
-This is a streamlined version using a single agent with multiple tools.
-"""
-
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
@@ -12,15 +6,10 @@ from pydantic import BaseModel
 from typing import Optional, List
 import uvicorn
 import os
-
 from langchain_core.messages import HumanMessage, AIMessage
-
 from agent import create_employee_assistant
-from tools.utils.rag_utils import initialize_company_vector_db
+from tools import initialize_company_vector_db
 
-# =============================================================================
-# FastAPI App
-# =============================================================================
 
 app = FastAPI(
     title="Employee Assistant API",
@@ -29,7 +18,6 @@ app = FastAPI(
 )
 frontend_dir = os.path.join(os.path.dirname(__file__), "frontend")
 app.mount("/static", StaticFiles(directory=frontend_dir), name="static")
-# CORS - Allow all origins for development
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -39,7 +27,8 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-# Create the agent once at startup
+
+# Create the agent once at startupp
 agent = None
 
 # Session history storage (in-memory for simplicity)
@@ -63,9 +52,7 @@ async def startup():
     print("Agent ready!")
 
 
-# =============================================================================
-# Request/Response Models
-# =============================================================================
+# models
 
 
 class Message(BaseModel):
@@ -86,9 +73,7 @@ class ChatResponse(BaseModel):
     metadata: Optional[dict] = None
 
 
-# =============================================================================
-# Endpoints
-# =============================================================================
+# endpoints
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -218,10 +203,6 @@ async def clear_session(session_id: str):
         return {"success": True, "message": f"Session {session_id} cleared"}
     return {"success": False, "message": "Session not found"}
 
-
-# =============================================================================
-# Run Server
-# =============================================================================
 
 if __name__ == "__main__":
     uvicorn.run("api:app", host="0.0.0.0", port=8000, reload=True)

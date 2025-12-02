@@ -1,10 +1,9 @@
 """
-Simple Employee Assistant Agent using LangChain's create_agent (ReAct pattern).
+simple agent using langchain create_agent functionality (ReAct pattern).
 
-This single agent has access to all tools and can reason about which ones to use.
-No need for multiple agents or an orchestrator - the LLM handles tool selection.
+has access to all the tools defined in the utils/ directory.
 
-Tools are organized in separate utility files for maintainability:
+tools are organized in separate utility files for maintainability:
 - utils/catalog_tools.py - Product catalog search and details
 - utils/order_tools.py - Order tracking and history
 - utils/inventory_tools.py - Inventory management
@@ -15,18 +14,19 @@ Tools are organized in separate utility files for maintainability:
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.agents import create_agent
-
-from config import GOOGLE_API_KEY
-
-# Import all tools from utility modules
-from tools.catalog_tools import search_products, get_product_by_sku, list_categories
-from tools.order_tools import track_order, get_order_history
-from tools.inventory_tools import check_inventory, get_inventory_summary
-from tools.sales_tools import get_sales_summary
-from tools.company_tools import search_company_documents
-from tools.invoice_tools import generate_invoice
-
-# Re-export RAG initialization for the API
+from config import GOOGLE_API_KEY, LLM_TEMPERATURE
+from tools import (
+    search_products,
+    get_product_by_sku,
+    list_categories,
+    track_order,
+    get_order_history,
+    check_inventory,
+    get_inventory_summary,
+    get_sales_summary,
+    search_company_documents,
+    generate_invoice,
+)
 
 
 def create_employee_assistant():
@@ -46,7 +46,7 @@ def create_employee_assistant():
     model = ChatGoogleGenerativeAI(
         model="gemini-2.0-flash",
         google_api_key=GOOGLE_API_KEY,
-        temperature=0.1,
+        temperature=LLM_TEMPERATURE,
     )
 
     # System prompt with ReAct format
@@ -81,8 +81,6 @@ Available product categories: Ropes, Wire, Bags, Safety, Hardware, Packaging
 Invoice format: Items should be specified as "SKU:quantity"
 (e.g., "PP-ROPE-12MM:10,HW-SHACKLE-10:5")
 """
-
-    # system_prompt is your long string (without the ReAct formatting section)
     agent = create_agent(
         model=model,
         tools=tools,

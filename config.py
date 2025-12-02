@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# API Keys - Essential
+# API Keys
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")  # Required for LLM
 
 # Validate required keys
