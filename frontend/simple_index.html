@@ -219,7 +219,10 @@
         }
 
         .tool-icon {
-            color: var(--primary);
+            width: 4px;
+            height: 4px;
+            background: var(--primary);
+            border-radius: 50%;
         }
 
         /* Typing indicator */
@@ -358,7 +361,7 @@
 <body>
     <!-- Header -->
     <div class="header">
-        <div class="header-icon">🏭</div>
+        <div class="header-icon">WH</div>
         <div>
             <div class="header-title">Warehouse Assistant</div>
             <div class="header-subtitle">AI-powered employee helper</div>
@@ -368,18 +371,18 @@
 
     <!-- Quick Actions -->
     <div class="quick-actions">
-        <button class="quick-btn" onclick="sendQuick('Show me rope products')">🔗 Ropes</button>
-        <button class="quick-btn" onclick="sendQuick('Track order for john.smith@email.com')">📦 Track Order</button>
-        <button class="quick-btn" onclick="sendQuick('Show low stock items')">⚠️ Low Stock</button>
-        <button class="quick-btn" onclick="sendQuick('Get inventory summary')">📊 Inventory</button>
-        <button class="quick-btn" onclick="sendQuick('Get sales summary')">📈 Sales</button>
-        <button class="quick-btn" onclick="sendQuick('What is the return policy?')">📋 Policies</button>
+        <button class="quick-btn" onclick="sendQuick('Show me rope products')">Ropes</button>
+        <button class="quick-btn" onclick="sendQuick('Track order for john.smith@email.com')">Track Order</button>
+        <button class="quick-btn" onclick="sendQuick('Show low stock items')">Low Stock</button>
+        <button class="quick-btn" onclick="sendQuick('Get inventory summary')">Inventory</button>
+        <button class="quick-btn" onclick="sendQuick('Get sales summary')">Sales</button>
+        <button class="quick-btn" onclick="sendQuick('What is the return policy?')">Policies</button>
     </div>
 
     <!-- Chat Container -->
     <div class="chat-container" id="chat-container">
         <div class="welcome">
-            <h2>👋 Welcome!</h2>
+            <h2>Welcome!</h2>
             <p>I'm your warehouse assistant. I can help you with products, orders, inventory, and more.</p>
         </div>
     </div>
@@ -441,8 +444,8 @@
                 const data = await response.json();
                 hideTyping();
 
-                console.log('📊 Response data:', data);
-                console.log('🔧 Tools used:', data.metadata?.tools_used);
+                console.log('Response data:', data);
+                console.log('Tools used:', data.metadata?.tools_used);
 
                 if (data.success) {
                     addMessage(data.response, 'bot', data.metadata?.tools_used || []);
@@ -469,7 +472,7 @@
 
         // Add message to chat
         function addMessage(text, type, toolsUsed = []) {
-            console.log('📝 addMessage called:', { type, toolsUsed });
+            console.log('addMessage called:', { type, toolsUsed });
             
             const container = document.getElementById('chat-container');
             const div = document.createElement('div');
@@ -500,7 +503,7 @@
             
             // Add tools used dropdown for bot messages if tools were used
             if (type === 'bot' && toolsUsed && toolsUsed.length > 0) {
-                console.log('✅ Adding tools dropdown with tools:', toolsUsed);
+                console.log('Adding tools dropdown with tools:', toolsUsed);
                 const toolsId = 'tools_' + Date.now() + Math.random();
                 contentHtml += `
                     <div class="tools-used">
@@ -511,7 +514,7 @@
                         <div class="tools-list" id="${toolsId}">
                             ${toolsUsed.map(tool => `
                                 <div class="tool-item">
-                                    <span class="tool-icon">🔧</span>
+                                    <span class="tool-icon"></span>
                                     <span>${formatToolName(tool)}</span>
                                 </div>
                             `).join('')}
@@ -519,7 +522,7 @@
                     </div>
                 `;
             } else {
-                console.log('❌ Not adding tools dropdown:', { type, toolsUsed, length: toolsUsed?.length });
+                console.log('Not adding tools dropdown:', { type, toolsUsed, length: toolsUsed?.length });
             }
             
             div.innerHTML = contentHtml;

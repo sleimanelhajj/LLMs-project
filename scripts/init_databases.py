@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """
-Initialize databases for the Employee Assistant Chatbot system.
+Initialize ALL databases and components for the Employee Assistant Chatbot system.
 
 This script creates:
 1. SQLite database for product catalog
-2. Sample data for testing
-3. Directory structure for file storage
+2. SQLite database for customers and orders
+3. Vector database for company documents (RAG)
+4. Sample data for testing
+5. Directory structure for file storage
 """
 
 import sqlite3
@@ -16,6 +18,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from config import CATALOG_DB_PATH, DATABASE_DIR, INVOICES_DIR
+from tools.utils.rag_utils import initialize_company_vector_db
 
 
 def create_catalog_database():
@@ -421,6 +424,9 @@ def create_directories():
         DATABASE_DIR,
         INVOICES_DIR,
         os.path.join(os.path.dirname(DATABASE_DIR), "templates"),
+        os.path.join(DATABASE_DIR, "documents"),
+        os.path.join(DATABASE_DIR, "vector_dbs"),
+        os.path.join(DATABASE_DIR, "reports"),
     ]
     
     for directory in directories:
@@ -486,27 +492,84 @@ def verify_setup():
         return False
 
 
-def main():
-    """Main setup function."""
-    print("=== Employee Assistant Chatbot - Database Initialization ===\n")
+def initialize_vector_database():
+    """Initialize the vector database for company documents (RAG)."""
+    print("\nInitializing vector database for company documents...")
     
     try:
+        # Check if documents exist
+        docs_dir = os.path.join(DATABASE_DIR, "documents")
+        if not os.path.exists(docs_dir):
+            os.makedirs(docs_dir)
+            print(f"✓ Created {docs_dir} directory")
+            print("  Note: Add company documents (.pdf, .txt, .md) to this directory for RAG functionality")
+            return True
+        
+        # Check if there are any documents
+        doc_files = [f for f in os.listdir(docs_dir) if f.endswith(('.pdf', '.txt', '.md'))]
+        if not doc_files:
+            print(f"  Note: No documents found in {docs_dir}")
+            print("  Add company documents for RAG functionality")
+            return True
+        
+        # Initialize vector database
+        print(f"  Found {len(doc_files)} document(s) to process")
+        initialize_company_vector_db()
+        print("✓ Vector database initialized successfully")
+        
+        return True
+        
+    except Exception as e:
+        print(f"✗ Warning: Vector database initialization failed: {e}")
+        print("  The system will still work, but RAG-based company document search will not be available")
+        return True  # Non-critical, so return True to continue
+
+
+def main():
+    """Main setup function."""
+    print("=" * 80)
+    print("EMPLOYEE ASSISTANT CHATBOT - COMPLETE DATABASE INITIALIZATION")
+    print("=" * 80)
+    print()
+    
+    try:
+        # Step 1: Create directories
         create_directories()
+        
+        # Step 2: Create catalog database
         create_catalog_database()
+        
+        # Step 3: Create orders database
         create_orders_database()
         
+        # Step 4: Initialize vector database
+        initialize_vector_database()
+        
+        # Step 5: Verify setup
         if verify_setup():
-            print("\n🎉 Database initialization completed successfully!")
+            print("\n" + "=" * 80)
+            print("INITIALIZATION COMPLETED SUCCESSFULLY!")
+            print("=" * 80)
             print("\nNext steps:")
-            print("1. Copy .env.example to .env and add your API keys")
-            print("2. Install dependencies: pip install -r requirements.txt")
-            print("3. Start the FastAPI server: python api.py")
+            print("1. Create .env file and add your Google API key:")
+            print("   GOOGLE_API_KEY=your_key_here")
+            print("2. Install dependencies (if not already done):")
+            print("   pip install -r requirements.txt")
+            print("3. Start the application:")
+            print("   python simple_api.py")
+            print("4. Open your browser to:")
+            print("   http://localhost:8000")
+            print("\n" + "=" * 80)
         else:
-            print("\n❌ Database initialization failed!")
+            print("\n" + "=" * 80)
+            print("INITIALIZATION FAILED!")
+            print("=" * 80)
             sys.exit(1)
             
     except Exception as e:
-        print(f"\n❌ Error during initialization: {e}")
+        print(f"\nERROR during initialization: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
 
 

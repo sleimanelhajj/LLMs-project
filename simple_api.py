@@ -49,16 +49,16 @@ sessions = {}
 async def startup():
     """Initialize the agent and RAG vector database on startup."""
     global agent
-    print("🚀 Starting Employee Assistant...")
+    print("Starting Employee Assistant...")
 
     # Initialize RAG vector database for company documents
-    print("📚 Initializing RAG vector database...")
+    print("Initializing RAG vector database...")
     initialize_company_vector_db()
-    print("✅ RAG initialized!")
+    print("RAG initialized!")
 
     # Create the agent
     agent = create_employee_assistant()
-    print("✅ Agent ready!")
+    print("Agent ready!")
 
 
 # =============================================================================
@@ -153,7 +153,7 @@ async def chat(request: ChatRequest):
                 tools_used.append(msg.name)
 
         # Debug logging
-        print(f"🔧 Tools used: {tools_used}")
+        print(f"Tools used: {tools_used}")
 
         # Save to session history
         sessions[session_id].append({"role": "user", "content": request.message})
