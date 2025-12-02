@@ -7,6 +7,7 @@ This is a streamlined version using a single agent with multiple tools.
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional, List
 import uvicorn
@@ -14,7 +15,7 @@ import os
 
 from langchain_core.messages import HumanMessage, AIMessage
 
-from simple_agent import create_employee_assistant
+from agent import create_employee_assistant
 from tools.utils.rag_utils import initialize_company_vector_db
 
 # =============================================================================
@@ -26,7 +27,8 @@ app = FastAPI(
     description="Simple AI assistant for warehouse employees",
     version="2.0.0",
 )
-
+frontend_dir = os.path.join(os.path.dirname(__file__), "frontend")
+app.mount("/static", StaticFiles(directory=frontend_dir), name="static")
 # CORS - Allow all origins for development
 app.add_middleware(
     CORSMiddleware,
@@ -92,9 +94,7 @@ class ChatResponse(BaseModel):
 @app.get("/", response_class=HTMLResponse)
 async def root():
     """Serve the frontend."""
-    frontend_path = os.path.join(
-        os.path.dirname(__file__), "frontend", "simple_index.html"
-    )
+    frontend_path = os.path.join(os.path.dirname(__file__), "frontend", "index.html")
     if os.path.exists(frontend_path):
         with open(frontend_path, "r", encoding="utf-8") as f:
             return f.read()
@@ -142,14 +142,17 @@ async def chat(request: ChatRequest):
         tools_used = []
         for msg in result_messages:
             # Check if message has tool calls
-            if hasattr(msg, 'additional_kwargs') and 'tool_calls' in msg.additional_kwargs:
-                for tool_call in msg.additional_kwargs['tool_calls']:
-                    if 'function' in tool_call and 'name' in tool_call['function']:
-                        tool_name = tool_call['function']['name']
+            if (
+                hasattr(msg, "additional_kwargs")
+                and "tool_calls" in msg.additional_kwargs
+            ):
+                for tool_call in msg.additional_kwargs["tool_calls"]:
+                    if "function" in tool_call and "name" in tool_call["function"]:
+                        tool_name = tool_call["function"]["name"]
                         if tool_name not in tools_used:
                             tools_used.append(tool_name)
             # Also check for ToolMessage (response from tools)
-            elif hasattr(msg, 'name') and msg.name and msg.name not in tools_used:
+            elif hasattr(msg, "name") and msg.name and msg.name not in tools_used:
                 tools_used.append(msg.name)
 
         # Debug logging
@@ -221,4 +224,4 @@ async def clear_session(session_id: str):
 # =============================================================================
 
 if __name__ == "__main__":
-    uvicorn.run("simple_api:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("api:app", host="0.0.0.0", port=8000, reload=True)

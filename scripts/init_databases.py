@@ -556,7 +556,7 @@ def main():
             print("2. Install dependencies (if not already done):")
             print("   pip install -r requirements.txt")
             print("3. Start the application:")
-            print("   python simple_api.py")
+            print("   python api.py")
             print("4. Open your browser to:")
             print("   http://localhost:8000")
             print("\n" + "=" * 80)
