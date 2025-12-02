@@ -68,17 +68,18 @@ def track_order(identifier: str) -> str:
         # Build status text without emojis
         status_text = order["status"].replace("_", " ").title()
 
-        result = "**Order Tracking**\n\n"
-        result += f"**Order ID:** {order['order_id']}\n"
-        result += f"**Tracking:** {order['tracking_number'] or 'Not yet assigned'}\n"
-        result += f"**Status:** {status_text}\n"
-        result += f"**Location:** {order['current_location']}\n"
-        result += f"**Est. Delivery:** {order['estimated_delivery']}\n\n"
-        result += f"**Customer:** {order['customer_name']} ({order['company']})\n"
+        # Build HTML instead of markdown
+        result = "<strong>Order Tracking</strong><br><br>"
+        result += f"<strong>Order ID:</strong> {order['order_id']}<br>"
+        result += f"<strong>Tracking:</strong> {order['tracking_number'] or 'Not yet assigned'}<br>"
+        result += f"<strong>Status:</strong> {status_text}<br>"
+        result += f"<strong>Location:</strong> {order['current_location']}<br>"
         result += (
-            f"**Ship To:** {order['shipping_address']}, {order['shipping_city']}\n\n"
+            f"<strong>Est. Delivery:</strong> {order['estimated_delivery']}<br><br>"
         )
-        result += "**Items:**\n"
+        result += f"<strong>Customer:</strong> {order['customer_name']} ({order['company']})<br>"
+        result += f"<strong>Ship To:</strong> {order['shipping_address']}, {order['shipping_city']}<br><br>"
+        result += "<strong>Items:</strong><br>"
 
         # Use shared HTML table generator for items
         item_rows = [
@@ -97,7 +98,7 @@ def track_order(identifier: str) -> str:
         else:
             result += "No items found for this order."
 
-        result += f"\n\n**Total:** ${order['total_amount']:.2f}"
+        result += f"<br><br><strong>Total:</strong> ${order['total_amount']:.2f}"
 
         return result
 
