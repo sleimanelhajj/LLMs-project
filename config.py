@@ -9,7 +9,7 @@ GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")  # Required for LLM
 
 # Validate required keys
 if not GOOGLE_API_KEY:
-    print("⚠️  WARNING: GOOGLE_API_KEY not found in environment variables")
+    print("WARNING: GOOGLE_API_KEY not found in environment variables")
     print("Please add GOOGLE_API_KEY=your_key_here to your .env file")
 
 # Project root directory (where config.py is located)
