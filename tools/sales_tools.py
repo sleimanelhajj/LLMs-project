@@ -62,6 +62,10 @@ def get_sales_summary(period: str = "30days") -> str:
             (start_date_str,),
         )
         summary = cursor.fetchone() or {}
+        
+        # Debug logging
+        print(f"[SALES TOOL] Period: {period}, Start Date: {start_date_str}")
+        print(f"[SALES TOOL] Summary results: {summary}")
 
         # Top products
         cursor.execute(
@@ -70,13 +74,15 @@ def get_sales_summary(period: str = "30days") -> str:
             FROM order_items oi
             JOIN orders o ON oi.order_id = o.order_id
             WHERE o.order_date >= ?
-            GROUP BY oi.product_sku, oi.product_name
+            GROUP BY oi.product_name
             ORDER BY revenue DESC
             LIMIT 5
             """,
             (start_date_str,),
         )
         top_products = cursor.fetchall() or []
+        
+        print(f"[SALES TOOL] Top products count: {len(top_products)}")
 
         # Top customers
         cursor.execute(
@@ -92,6 +98,8 @@ def get_sales_summary(period: str = "30days") -> str:
             (start_date_str,),
         )
         top_customers = cursor.fetchall() or []
+        
+        print(f"[SALES TOOL] Top customers count: {len(top_customers)}")
 
         # Build HTML response (no newlines, use <br> sparingly)
         result = f"<strong>📈 Sales Summary ({period_label})</strong><br><br>"
@@ -119,7 +127,9 @@ def get_sales_summary(period: str = "30days") -> str:
                 ["Name", "Company", "Total Spent"],
                 customer_rows,
             )
-
+        
+        print(f"[SALES TOOL] Final result length: {len(result)} chars")
+        print(f"[SALES TOOL] Result preview: {result[:200]}...")
         return result
 
     finally:

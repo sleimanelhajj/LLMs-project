@@ -103,9 +103,13 @@ async def chat(request: ChatRequest):
         if session_id not in sessions:
             sessions[session_id] = []
 
+        # Keep only recent history to avoid context length issues
+        # Keep last 6 messages (3 exchanges) from history
+        recent_history = sessions[session_id][-6:] if len(sessions[session_id]) > 6 else sessions[session_id]
+        
         # Build LangChain messages from session history
         lc_messages = []
-        for msg in sessions[session_id]:
+        for msg in recent_history:
             if msg["role"] == "user":
                 lc_messages.append(HumanMessage(content=msg["content"]))
             else:
@@ -113,6 +117,8 @@ async def chat(request: ChatRequest):
 
         # Add the current user message
         lc_messages.append(HumanMessage(content=request.message))
+        
+        print(f"[API] Context size: {len(lc_messages)} messages")
 
         # Invoke the agent graph
         # Use "messages" key (required by create_agent agents)
@@ -121,7 +127,40 @@ async def chat(request: ChatRequest):
         # The agent returns state with a "messages" list
         result_messages = result["messages"]
         last_msg = result_messages[-1]
-        response_text = last_msg.content
+        
+        # Extract response text - handle both string and list content
+        if isinstance(last_msg.content, str):
+            response_text = last_msg.content
+        elif isinstance(last_msg.content, list):
+            # Extract text from content blocks
+            response_text = "".join(
+                block.get("text", "") if isinstance(block, dict) else str(block)
+                for block in last_msg.content
+            )
+        else:
+            response_text = str(last_msg.content)
+        
+        # Ensure response is not empty
+        response_text = response_text.strip()
+        if not response_text:
+            print(f"WARNING: Empty response detected. Last message: {last_msg}")
+            print(f"Last message type: {type(last_msg)}, content: {last_msg.content}")
+            print(f"Response metadata: {getattr(last_msg, 'response_metadata', {})}")
+            
+            # Check if there are tool messages with content we can use
+            tool_responses = []
+            for msg in result_messages:
+                if hasattr(msg, '__class__') and msg.__class__.__name__ == 'ToolMessage':
+                    if hasattr(msg, 'content') and msg.content:
+                        tool_responses.append(str(msg.content))
+            
+            if tool_responses:
+                # Use the tool response directly
+                response_text = tool_responses[-1]
+                print(f"[API] Using tool response as fallback: {response_text[:100]}...")
+            else:
+                # Generic fallback
+                response_text = "I apologize, but I encountered an issue generating a response. This may be due to context length. Please try starting a new conversation."
 
         # Extract tool usage information from the messages
         tools_used = []
@@ -147,9 +186,9 @@ async def chat(request: ChatRequest):
         sessions[session_id].append({"role": "user", "content": request.message})
         sessions[session_id].append({"role": "assistant", "content": response_text})
 
-        # Keep session history manageable
-        if len(sessions[session_id]) > 20:
-            sessions[session_id] = sessions[session_id][-20:]
+        # Keep session history manageable - only keep last 10 messages (5 exchanges)
+        if len(sessions[session_id]) > 10:
+            sessions[session_id] = sessions[session_id][-10:]
 
         return ChatResponse(
             response=response_text,
@@ -171,6 +210,16 @@ async def chat(request: ChatRequest):
 async def chat_legacy(request: ChatRequest):
     """Legacy chat endpoint for compatibility."""
     return await chat(request)
+
+
+@app.post("/api/clear-session")
+async def clear_session(session_id: str = "default"):
+    """Clear conversation history for a session."""
+    global sessions
+    if session_id in sessions:
+        sessions[session_id] = []
+        return {"success": True, "message": f"Session {session_id} cleared"}
+    return {"success": True, "message": "Session not found or already empty"}
 
 
 @app.get("/health")

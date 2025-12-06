@@ -156,3 +156,32 @@ async function checkStatus() {
 
 checkStatus();
 setInterval(checkStatus, 30000);
+
+async function clearSession() {
+    try {
+        const response = await fetch(`${API_URL}/api/clear-session?session_id=${sessionId}`, {
+            method: 'POST'
+        });
+        
+        if (response.ok) {
+            // Clear the chat container
+            const chatContainer = document.getElementById('chat-container');
+            chatContainer.innerHTML = `
+                <div class="welcome">
+                    <h2>Welcome!</h2>
+                    <p>I'm your warehouse assistant. I can help you with products, orders, inventory, and more.</p>
+                </div>
+            `;
+            isFirstMessage = true;
+            
+            // Show feedback
+            const feedback = document.createElement('div');
+            feedback.style.cssText = 'position: fixed; top: 80px; right: 20px; background: #10b981; color: white; padding: 12px 20px; border-radius: 8px; z-index: 1000; animation: fadeIn 0.3s;';
+            feedback.textContent = '✓ Chat cleared - Starting fresh!';
+            document.body.appendChild(feedback);
+            setTimeout(() => feedback.remove(), 2000);
+        }
+    } catch (error) {
+        console.error('Error clearing session:', error);
+    }
+}
