@@ -151,10 +151,11 @@ def get_order_history(customer_email: str, limit: int = 5) -> str:
         if not orders:
             return f"No orders found for {customer['name']}"
 
-        result = f"**Order History for {customer['name']}** ({customer['company']})\n\n"
+        # Build HTML response
+        result = f"<strong>Order History for {customer['name']}</strong> ({customer['company']})<br><br>"
 
         total_spent = sum(o["total_amount"] for o in orders)
-        result += f"Total: {len(orders)} orders | ${total_spent:,.2f} spent\n\n"
+        result += f"<strong>Total:</strong> {len(orders)} orders | ${total_spent:,.2f} spent<br><br>"
 
         # Build table data for orders without emojis, using shared table generator
         table_data = []
