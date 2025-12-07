@@ -26,6 +26,10 @@ from tools import (
     get_sales_summary,
     search_company_documents,
     generate_invoice,
+        convert_currency,
+    get_currency_rates,
+    check_delivery_delays,
+    calculate_business_days,
 )
 
 
@@ -41,6 +45,10 @@ def create_employee_assistant():
         get_sales_summary,
         search_company_documents,
         generate_invoice,
+        convert_currency,
+        get_currency_rates,
+        check_delivery_delays,
+        calculate_business_days,
     ]
 
     model = ChatGoogleGenerativeAI(
@@ -58,7 +66,9 @@ You help employees with:
 3. Inventory - Check stock levels, view low stock alerts, get inventory summaries
 4. Sales Reports - View sales summaries and top products/customers
 5. Company Info - Answer questions about policies, contact info, hours (uses RAG search)
-6. Invoice Generation - Create invoices for customer orders
+6. Invoice Generation - Create invoices for customer orders (supports multiple currencies!)
+7. Currency Exchange - Convert amounts between currencies, get current exchange rates
+8. Delivery Planning - Check holidays, calculate business days, predict delivery delays
 
 IMPORTANT - TOOL USAGE RULES:
 - You MUST use a tool for ANY question about products, orders, inventory, sales, or company info
@@ -68,6 +78,8 @@ IMPORTANT - TOOL USAGE RULES:
 - If the user asks about products, categories, or items, call search_products or list_categories
 - If the user asks about orders or tracking, call track_order or get_order_history
 - If the user asks about company policies, hours, or contact info, call search_company_documents
+- If the user asks about currency conversion or exchange rates, use convert_currency or get_currency_rates
+- If the user asks about holidays, delivery delays, or business days, use check_delivery_delays or calculate_business_days
 
 CRITICAL - HTML OUTPUT:
 When a tool returns data, you MUST return that data EXACTLY as-is. 
@@ -85,16 +97,25 @@ DEFAULT TOOL PARAMETERS:
   - "30 days" or "month" → period="30days"  
   - "90 days" or "quarter" → period="90days"
   - "all time" or "all" → period="all"
+- For invoices: currency defaults to "USD" unless specified
+  - Supported currencies: USD, EUR, GBP, CAD, AUD, JPY, CHF, CNY, MXN
+- For delivery delays: country_code defaults to "US" unless specified
+  - Supported countries: US, CA, GB, MX, DE, FR, and many more
 
 Additional Guidelines:
 - Be concise and helpful
 - If you're unsure which tool to use, pick the most relevant one and try it
-- For invoices, you need customer name, email, and items with quantities
+- For invoices, you need customer name, email, items with quantities, and optionally currency
+  - When asking for invoice details, ALWAYS provide an example format
+  - Example prompt: "I'll need: Customer Name, Customer Email, Items (e.g., PP-ROPE-12MM:10,HW-SHACKLE-10:5), Currency (optional, e.g., USD, EUR, GBP - defaults to USD)"
+- For currency conversions, use standard 3-letter codes (USD, EUR, GBP, etc.)
+- For delivery planning, dates should be in YYYY-MM-DD format
 
 Available product categories: Ropes, Wire, Bags, Safety, Hardware, Packaging
 
 Invoice format: Items should be specified as "SKU:quantity"
 (e.g., "PP-ROPE-12MM:10,HW-SHACKLE-10:5")
+Currency can be specified as an additional parameter (e.g., currency="EUR")
 """
     agent = create_agent(
         model=model,

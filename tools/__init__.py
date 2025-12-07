@@ -20,6 +20,12 @@ from tools.inventory_tools import check_inventory, get_inventory_summary
 from tools.sales_tools import get_sales_summary
 from tools.company_tools import search_company_documents
 from tools.invoice_tools import generate_invoice
+from tools.external_api_tools import (
+    convert_currency,
+    get_currency_rates,
+    check_delivery_delays,
+    calculate_business_days,
+)
 
 __all__ = [
     # Database
@@ -38,4 +44,9 @@ __all__ = [
     "get_sales_summary",
     "search_company_documents",
     "generate_invoice",
+    # External APIs
+    "convert_currency",
+    "get_currency_rates",
+    "check_delivery_delays",
+    "calculate_business_days",
 ]
