@@ -24,6 +24,7 @@ python-multipart>=0.0.12
 # PDF / plotting
 reportlab>=4.0.0
 matplotlib>=3.9.0
+tabulate>=0.9.0
 
 # Config / data / templating
 pyyaml>=6.0.0
@@ -35,13 +36,8 @@ httpx>=0.27.0
 aiofiles>=23.2.0
 websockets>=12.0
 
-# Optional UI (if you still use Streamlit)
-streamlit>=1.39.0
-
-# Dev / formatting / linting / tests
-pytest>=8.0.0
-black>=24.0.0
-flake8>=7.0.0
+# Hugging Face
+huggingface-hub>=0.20.0
 
 # Env management
 python-dotenv>=1.0.0

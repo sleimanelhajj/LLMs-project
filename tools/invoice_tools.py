@@ -10,6 +10,7 @@ from langchain_core.tools import tool
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import inch
+import httpx
 
 from config import INVOICES_DIR
 from tools.utils.db_utils import get_db_connection
@@ -37,11 +38,19 @@ def _get_next_invoice_number() -> str:
 
 
 def _generate_invoice_pdf(invoice_number: str, customer_name: str, customer_email: str,
-                          items: list, subtotal: float, tax: float, total: float) -> str:
+                          items: list, subtotal: float, tax: float, total: float, 
+                          currency: str = "USD", exchange_rate: float = 1.0) -> str:
     """Generate a PDF invoice and return the file path."""
     pdf_path = os.path.join(INVOICES_DIR, f"{invoice_number}.pdf")
     c = canvas.Canvas(pdf_path, pagesize=letter)
     width, height = letter
+    
+    # Currency symbol mapping
+    currency_symbols = {
+        "USD": "$", "EUR": "€", "GBP": "£", "JPY": "¥", 
+        "CAD": "CA$", "AUD": "A$", "CHF": "CHF", "CNY": "¥", "MXN": "MX$"
+    }
+    symbol = currency_symbols.get(currency.upper(), currency + " ")
     
     # Header
     c.setFont("Helvetica-Bold", 24)
@@ -50,6 +59,10 @@ def _generate_invoice_pdf(invoice_number: str, customer_name: str, customer_emai
     c.setFont("Helvetica", 11)
     c.drawString(1 * inch, height - 1.4 * inch, f"Invoice Number: {invoice_number}")
     c.drawString(1 * inch, height - 1.6 * inch, f"Date: {datetime.now().strftime('%Y-%m-%d')}")
+    if currency != "USD":
+        c.setFont("Helvetica", 9)
+        c.drawString(1 * inch, height - 1.8 * inch, f"Currency: {currency} (Rate: 1 USD = {exchange_rate:.4f} {currency})")
+        c.setFont("Helvetica", 11)
     
     # From
     c.setFont("Helvetica-Bold", 12)
@@ -84,8 +97,8 @@ def _generate_invoice_pdf(invoice_number: str, customer_name: str, customer_emai
     for item in items:
         c.drawString(1 * inch, y, item['name'][:35])
         c.drawString(4 * inch, y, str(item['quantity']))
-        c.drawString(5 * inch, y, f"${item['unit_price']:.2f}")
-        c.drawString(6 * inch, y, f"${item['line_total']:.2f}")
+        c.drawString(5 * inch, y, f"{symbol}{item['unit_price']:.2f}")
+        c.drawString(6 * inch, y, f"{symbol}{item['line_total']:.2f}")
         y -= 0.25 * inch
     
     # Totals
@@ -94,16 +107,16 @@ def _generate_invoice_pdf(invoice_number: str, customer_name: str, customer_emai
     y -= 0.3 * inch
     
     c.drawString(5 * inch, y, "Subtotal:")
-    c.drawString(6 * inch, y, f"${subtotal:.2f}")
+    c.drawString(6 * inch, y, f"{symbol}{subtotal:.2f}")
     y -= 0.25 * inch
     
     c.drawString(5 * inch, y, "Tax (8.25%):")
-    c.drawString(6 * inch, y, f"${tax:.2f}")
+    c.drawString(6 * inch, y, f"{symbol}{tax:.2f}")
     y -= 0.25 * inch
     
     c.setFont("Helvetica-Bold", 11)
     c.drawString(5 * inch, y, "Total:")
-    c.drawString(6 * inch, y, f"${total:.2f}")
+    c.drawString(6 * inch, y, f"{symbol}{total:.2f}")
     
     # Footer
     c.setFont("Helvetica", 9)
@@ -115,14 +128,15 @@ def _generate_invoice_pdf(invoice_number: str, customer_name: str, customer_emai
 
 
 @tool
-def generate_invoice(customer_name: str, customer_email: str, items_str: str) -> str:
+def generate_invoice(customer_name: str, customer_email: str, items_str: str, currency: str = "USD") -> str:
     """
-    Generate an invoice PDF for a customer order.
+    Generate an invoice PDF for a customer order with optional currency conversion.
     
     Args:
         customer_name: Name of the customer
         customer_email: Customer's email address
         items_str: Comma-separated list of items in format "SKU:quantity" (e.g., "PP-ROPE-12MM:10,HW-SHACKLE-10:5")
+        currency: Currency code for the invoice (default: 'USD'). Supports USD, EUR, GBP, CAD, AUD, JPY, etc.
     
     Returns:
         Invoice details and PDF file path
@@ -131,6 +145,22 @@ def generate_invoice(customer_name: str, customer_email: str, items_str: str) ->
     cursor = conn.cursor()
     
     try:
+        # Get exchange rate if currency is not USD
+        exchange_rate = 1.0
+        if currency.upper() != "USD":
+            try:
+                url = f"https://api.exchangerate-api.com/v4/latest/USD"
+                response = httpx.get(url, timeout=5.0)
+                response.raise_for_status()
+                data = response.json()
+                
+                if currency.upper() not in data["rates"]:
+                    return f"Currency '{currency}' not supported. Please use: USD, EUR, GBP, CAD, AUD, JPY, CHF, CNY, MXN, etc."
+                
+                exchange_rate = data["rates"][currency.upper()]
+            except Exception as e:
+                return f"Error fetching exchange rate: {str(e)}. Using USD instead."
+        
         # Parse items
         items = []
         errors = []
@@ -165,8 +195,8 @@ def generate_invoice(customer_name: str, customer_email: str, items_str: str) ->
                 "sku": sku.strip().upper(),
                 "name": product['name'],
                 "quantity": quantity,
-                "unit_price": product['unit_price'],
-                "line_total": quantity * product['unit_price']
+                "unit_price": product['unit_price'] * exchange_rate,
+                "line_total": quantity * product['unit_price'] * exchange_rate
             })
         
         if errors:
@@ -185,21 +215,31 @@ def generate_invoice(customer_name: str, customer_email: str, items_str: str) ->
         invoice_number = _get_next_invoice_number()
         pdf_path = _generate_invoice_pdf(
             invoice_number, customer_name, customer_email,
-            items, subtotal, tax, total
+            items, subtotal, tax, total, currency.upper(), exchange_rate
         )
         
+        # Currency symbol
+        currency_symbols = {
+            "USD": "$", "EUR": "€", "GBP": "£", "JPY": "¥", 
+            "CAD": "CA$", "AUD": "A$", "CHF": "CHF", "CNY": "¥", "MXN": "MX$"
+        }
+        symbol = currency_symbols.get(currency.upper(), currency.upper() + " ")
+        
         # Format response
-        result = "**✅ Invoice Generated Successfully!**\n\n"
-        result += f"**Invoice Number:** {invoice_number}\n"
-        result += f"**Customer:** {customer_name} ({customer_email})\n"
-        result += f"**Date:** {datetime.now().strftime('%Y-%m-%d')}\n\n"
-        result += "**Items:**\n"
+        result = "<strong>Invoice Generated Successfully!</strong><br><br>"
+        result += f"<strong>Invoice Number:</strong> {invoice_number}<br>"
+        result += f"<strong>Customer:</strong> {customer_name} ({customer_email})<br>"
+        result += f"<strong>Date:</strong> {datetime.now().strftime('%Y-%m-%d')}<br>"
+        result += f"<strong>Currency:</strong> {currency.upper()}<br>"
+        if currency.upper() != "USD":
+            result += f"<strong>Exchange Rate:</strong> 1 USD = {exchange_rate:.4f} {currency.upper()}<br>"
+        result += "<br><strong>Items:</strong><br>"
         for item in items:
-            result += f"  • {item['name']} x{item['quantity']} @ ${item['unit_price']:.2f} = ${item['line_total']:.2f}\n"
-        result += f"\n**Subtotal:** ${subtotal:.2f}\n"
-        result += f"**Tax (8.25%):** ${tax:.2f}\n"
-        result += f"**Total:** ${total:.2f}\n\n"
-        result += f"**PDF saved to:** `{pdf_path}`"
+            result += f"  • {item['name']} x{item['quantity']} @ {symbol}{item['unit_price']:.2f} = {symbol}{item['line_total']:.2f}<br>"
+        result += f"<br><strong>Subtotal:</strong> {symbol}{subtotal:.2f}<br>"
+        result += f"<strong>Tax (8.25%):</strong> {symbol}{tax:.2f}<br>"
+        result += f"<strong>Total:</strong> {symbol}{total:.2f}<br><br>"
+        result += f"<strong>PDF saved to:</strong> {pdf_path}"
         
         return result
         

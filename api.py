@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 import uvicorn
 import os
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 from agent import create_employee_assistant
 from tools import initialize_company_vector_db
 
@@ -50,6 +50,52 @@ async def startup():
     # Create the agent
     agent = create_employee_assistant()
     print("Agent ready!")
+
+
+def extract_response_from_messages(result_messages):
+    """
+    Extract response from agent messages with priority:
+    1. Latest ToolMessage content (the actual tool output)
+    2. Latest non-empty AIMessage content
+    3. Empty string if nothing found
+    
+    This ensures tool outputs are always returned even if final LLM step produces empty content.
+    """
+    # 1. If there is any ToolMessage with content, use the last one
+    tool_contents = [
+        m.content
+        for m in result_messages
+        if isinstance(m, ToolMessage) and m.content
+    ]
+    if tool_contents:
+        return str(tool_contents[-1]).strip()
+
+    # 2. Otherwise, use the last non-empty AIMessage content
+    for m in reversed(result_messages):
+        if isinstance(m, AIMessage):
+            content = m.content
+            
+            # Handle string content
+            if isinstance(content, str) and content.strip():
+                return content.strip()
+            
+            # Handle list content (Gemini sometimes returns content as list of dicts)
+            elif isinstance(content, list):
+                text_parts = []
+                for block in content:
+                    if isinstance(block, dict) and 'text' in block:
+                        text_parts.append(block['text'])
+                    elif isinstance(block, dict) and 'type' in block and block['type'] == 'text':
+                        text_parts.append(block.get('text', ''))
+                    elif isinstance(block, str):
+                        text_parts.append(block)
+                
+                combined = ''.join(text_parts).strip()
+                if combined:
+                    return combined
+
+    # 3. Fallback: nothing useful found
+    return ""
 
 
 # models
@@ -104,8 +150,8 @@ async def chat(request: ChatRequest):
             sessions[session_id] = []
 
         # Keep only recent history to avoid context length issues
-        # Keep last 6 messages (3 exchanges) from history
-        recent_history = sessions[session_id][-6:] if len(sessions[session_id]) > 6 else sessions[session_id]
+        # Keep last 8 messages (4 exchanges) from history
+        recent_history = sessions[session_id][-8:] if len(sessions[session_id]) > 8 else sessions[session_id]
         
         # Build LangChain messages from session history
         lc_messages = []
@@ -113,54 +159,54 @@ async def chat(request: ChatRequest):
             if msg["role"] == "user":
                 lc_messages.append(HumanMessage(content=msg["content"]))
             else:
-                lc_messages.append(AIMessage(content=msg["content"]))
+                # Truncate very long assistant responses to save context
+                content = msg["content"]
+                if len(content) > 3000:
+                    content = content[:3000] + "... (truncated)"
+                lc_messages.append(AIMessage(content=content))
 
         # Add the current user message
         lc_messages.append(HumanMessage(content=request.message))
         
         print(f"[API] Context size: {len(lc_messages)} messages")
 
-        # Invoke the agent graph
+        # Invoke the agent graph with retry logic for empty responses
         # Use "messages" key (required by create_agent agents)
-        result = await agent.ainvoke({"messages": lc_messages})
-
-        # The agent returns state with a "messages" list
-        result_messages = result["messages"]
-        last_msg = result_messages[-1]
+        max_retries = 2
+        result = None
+        response_text = ""
         
-        # Extract response text - handle both string and list content
-        if isinstance(last_msg.content, str):
-            response_text = last_msg.content
-        elif isinstance(last_msg.content, list):
-            # Extract text from content blocks
-            response_text = "".join(
-                block.get("text", "") if isinstance(block, dict) else str(block)
-                for block in last_msg.content
-            )
+        for attempt in range(max_retries):
+            result = await agent.ainvoke({"messages": lc_messages})
+            result_messages = result["messages"]
+            
+            # Extract response using priority: ToolMessage > AIMessage
+            response_text = extract_response_from_messages(result_messages)
+            
+            # If we got a valid response, break out of retry loop
+            if response_text:
+                if attempt > 0:
+                    print(f"[API] Success on retry attempt {attempt + 1}")
+                break
+            
+            # Empty response handling - log details for debugging
+            print(f"WARNING: Empty response detected on attempt {attempt + 1}.")
+            print(f"Message chain has {len(result_messages)} messages:")
+            for i, m in enumerate(result_messages):
+                msg_type = type(m).__name__
+                msg_name = getattr(m, "name", None)
+                content_preview = repr(m.content)[:100] if hasattr(m, 'content') else 'N/A'
+                print(f"  [{i}] {msg_type} | name={msg_name} | content={content_preview}")
+            
+            # If this was the last attempt, use generic fallback
+            if attempt == max_retries - 1:
+                response_text = "I apologize, but I encountered an issue generating a response. Please try rephrasing your question or start a new conversation."
+        
+        # Ensure we have result_messages from the last attempt
+        if result:
+            result_messages = result["messages"]
         else:
-            response_text = str(last_msg.content)
-        
-        # Ensure response is not empty
-        response_text = response_text.strip()
-        if not response_text:
-            print(f"WARNING: Empty response detected. Last message: {last_msg}")
-            print(f"Last message type: {type(last_msg)}, content: {last_msg.content}")
-            print(f"Response metadata: {getattr(last_msg, 'response_metadata', {})}")
-            
-            # Check if there are tool messages with content we can use
-            tool_responses = []
-            for msg in result_messages:
-                if hasattr(msg, '__class__') and msg.__class__.__name__ == 'ToolMessage':
-                    if hasattr(msg, 'content') and msg.content:
-                        tool_responses.append(str(msg.content))
-            
-            if tool_responses:
-                # Use the tool response directly
-                response_text = tool_responses[-1]
-                print(f"[API] Using tool response as fallback: {response_text[:100]}...")
-            else:
-                # Generic fallback
-                response_text = "I apologize, but I encountered an issue generating a response. This may be due to context length. Please try starting a new conversation."
+            result_messages = []
 
         # Extract tool usage information from the messages
         tools_used = []
